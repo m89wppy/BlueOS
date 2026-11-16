@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Sat, 14 Nov 2026 09:54:14 +0700
+Subject: [PATCH] BlueOS: credit header in every BlueOS source file
+
+---
+diff --git a/src/com/android/launcher3/blueos/BlueOSAronaWidget.kt b/src/com/android/launcher3/blueos/BlueOSAronaWidget.kt
+index 57b1804..e3ef59f 100644
+--- a/src/com/android/launcher3/blueos/BlueOSAronaWidget.kt
++++ b/src/com/android/launcher3/blueos/BlueOSAronaWidget.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ package com.android.launcher3.blueos
+ 
+ import android.appwidget.AppWidgetHostView
+diff --git a/src/com/android/launcher3/blueos/BlueOSIcons.kt b/src/com/android/launcher3/blueos/BlueOSIcons.kt
+index 8f46820..e15be04 100644
+--- a/src/com/android/launcher3/blueos/BlueOSIcons.kt
++++ b/src/com/android/launcher3/blueos/BlueOSIcons.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ package com.android.launcher3.blueos
+ 
+ import android.content.Context
+diff --git a/src/com/android/launcher3/blueos/BlueOSWeatherWidget.kt b/src/com/android/launcher3/blueos/BlueOSWeatherWidget.kt
+index 760ed0a..52b922a 100644
+--- a/src/com/android/launcher3/blueos/BlueOSWeatherWidget.kt
++++ b/src/com/android/launcher3/blueos/BlueOSWeatherWidget.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ package com.android.launcher3.blueos
+ 
+ import android.appwidget.AppWidgetHostView
+diff --git a/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt b/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
+index 210a350..140ad9f 100644
+--- a/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
++++ b/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ package com.android.launcher3.blueos
+ 
+ import android.appwidget.AppWidgetHostView

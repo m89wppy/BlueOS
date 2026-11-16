@@ -4,6 +4,19 @@ You are helping someone build or port **BlueOS** (a fan ROM: LineageOS 24.0 = An
 They are often beginners at Android/Linux. Answer in their language, explain *why* before each step, and say how to
 check that it worked. Long steps (sync, build) take hours — run them in the background and keep watching.
 
+## Reusing BlueOS code in another project
+
+If you distribute a ROM, port, fork or other work that includes BlueOS code or original
+materials, follow [LICENSE](LICENSE), including when you adapt the code or rename its files:
+
+1. Keep the applicable copyright and attribution headers in the source you distribute.
+2. Include BlueOS's [NOTICE](NOTICE).
+3. Say clearly in a place users will see, such as your description, release notes or README,
+   that your work is based on or uses BlueOS by GDmio, with a link to https://github.com/GDmio/BlueOS.
+
+Tell the person you are helping about these conditions before they publish. Add the BlueOS
+attribution header to new BlueOS source files.
+
 ## Ground rules
 - **No game files.** Never download Blue Archive assets for the user, never point them to other collections of ripped
   files, never add such files to a public repository (`scripts/check-public.sh` refuses them: run it before committing

@@ -1,3 +1,12 @@
+/*
+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
+ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
+ */
+
 package org.blueos.arona
 
 import android.os.Handler

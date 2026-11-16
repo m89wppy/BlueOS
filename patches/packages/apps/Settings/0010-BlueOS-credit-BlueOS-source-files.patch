@@ -1,0 +1,169 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Sat, 14 Nov 2026 09:54:14 +0700
+Subject: [PATCH] BlueOS: credit header in every BlueOS source file
+
+---
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index 4e8422c..3d7c4c3 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/blueos/BlueOSDeskCutter.kt b/src/com/android/settings/blueos/BlueOSDeskCutter.kt
+index 001ca67..12d4242 100644
+--- a/src/com/android/settings/blueos/BlueOSDeskCutter.kt
++++ b/src/com/android/settings/blueos/BlueOSDeskCutter.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/deviceinfo/firmwareversion/BlueOSEasterEggActivity.java b/src/com/android/settings/deviceinfo/firmwareversion/BlueOSEasterEggActivity.java
+index 15062d1..61fac91 100644
+--- a/src/com/android/settings/deviceinfo/firmwareversion/BlueOSEasterEggActivity.java
++++ b/src/com/android/settings/deviceinfo/firmwareversion/BlueOSEasterEggActivity.java
+@@ -1,17 +1,10 @@
+ /*
+- * Copyright (C) 2026 BlueOS
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
+  *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
+  */
+ 
+ package com.android.settings.deviceinfo.firmwareversion;
+diff --git a/src/com/android/settings/display/BlueOSBootAnimationPreferenceController.java b/src/com/android/settings/display/BlueOSBootAnimationPreferenceController.java
+index ed66132..b3ad7c7 100644
+--- a/src/com/android/settings/display/BlueOSBootAnimationPreferenceController.java
++++ b/src/com/android/settings/display/BlueOSBootAnimationPreferenceController.java
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/display/BlueOSFontPreference.java b/src/com/android/settings/display/BlueOSFontPreference.java
+index 3247cbb..229e0a9 100644
+--- a/src/com/android/settings/display/BlueOSFontPreference.java
++++ b/src/com/android/settings/display/BlueOSFontPreference.java
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/display/BlueOSFontPreferenceController.java b/src/com/android/settings/display/BlueOSFontPreferenceController.java
+index 67c2a49..bc077b4 100644
+--- a/src/com/android/settings/display/BlueOSFontPreferenceController.java
++++ b/src/com/android/settings/display/BlueOSFontPreferenceController.java
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/notification/BlueOSLockSoundPreferenceController.java b/src/com/android/settings/notification/BlueOSLockSoundPreferenceController.java
+index 42c59b1..01a7bd4 100644
+--- a/src/com/android/settings/notification/BlueOSLockSoundPreferenceController.java
++++ b/src/com/android/settings/notification/BlueOSLockSoundPreferenceController.java
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/notification/BlueOSSoundPreview.java b/src/com/android/settings/notification/BlueOSSoundPreview.java
+index a36323b..03a0ff6 100644
+--- a/src/com/android/settings/notification/BlueOSSoundPreview.java
++++ b/src/com/android/settings/notification/BlueOSSoundPreview.java
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
+diff --git a/src/com/android/settings/notification/BlueOSTouchSoundPreferenceController.java b/src/com/android/settings/notification/BlueOSTouchSoundPreferenceController.java
+index 97e5066..69e08f8 100644
+--- a/src/com/android/settings/notification/BlueOSTouchSoundPreferenceController.java
++++ b/src/com/android/settings/notification/BlueOSTouchSoundPreferenceController.java
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ /*
+  * SPDX-FileCopyrightText: BlueOS
+  * SPDX-License-Identifier: Apache-2.0
