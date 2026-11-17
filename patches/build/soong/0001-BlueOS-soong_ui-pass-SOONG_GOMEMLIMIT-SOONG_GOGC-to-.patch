@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Wed, 11 Nov 2026 11:35:47 +0700
+Subject: [PATCH] BlueOS: soong_ui: pass SOONG_GOMEMLIMIT / SOONG_GOGC to
+ soong_build
+
+soong_build runs under env -i, so Go's GOMEMLIMIT / GOGC never reach it. On a 32 GB PC the analysis
+grew to ~60 GB (the heap reaches twice the live data before a collection) and was OOM-killed. A memory
+limit makes the collector work harder instead.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I024e6e04e91241c053e9221774e5d9de7b376814
+---
+ ui/build/soong.go | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/ui/build/soong.go b/ui/build/soong.go
+index 4521b4abe..5478ff085 100644
+--- a/ui/build/soong.go
++++ b/ui/build/soong.go
+@@ -230,6 +230,15 @@ func (pb PrimaryBuilderFactory) primaryBuilderInvocation(config Config) bootstra
+ 		// https://github.com/golang/proposal/blob/master/design/24543-non-cooperative-preemption.md
+ 		invocationEnv["GODEBUG"] = "asyncpreemptoff=1"
+ 	}
++	// BlueOS: soong_build runs under `env -i`, so Go's own GOMEMLIMIT / GOGC never reach it. On a 32 GB PC
++	// the analysis grew to ~60 GB (Go lets the heap reach twice the live data before collecting) and was
++	// OOM-killed; SOONG_GOMEMLIMIT (e.g. 30GiB) makes the collector work harder instead of growing.
++	if v := os.Getenv("SOONG_GOMEMLIMIT"); v != "" {
++		invocationEnv["GOMEMLIMIT"] = v
++	}
++	if v := os.Getenv("SOONG_GOGC"); v != "" {
++		invocationEnv["GOGC"] = v
++	}
+ 
+ 	var allArgs []string
+ 	allArgs = append(allArgs, pb.specificArgs...)

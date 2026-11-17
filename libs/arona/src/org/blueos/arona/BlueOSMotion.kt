@@ -58,8 +58,9 @@ object BlueOSMotion : SensorEventListener, Choreographer.FrameCallback {
     private val listeners = mutableListOf<Listener>()
     private var sm: SensorManager? = null
     private val grav = FloatArray(3)
-    private var linX = 0f
-    private var linY = 0f
+    /** The phone's own acceleration without gravity, g, sensor axes (x right, y up); 0.9 chibis throw by it. */
+    var linX = 0f; private set
+    var linY = 0f; private set
     private var tiltTX = 0f
     private var tiltTY = 0f
     private var vx = 0f

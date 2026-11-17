@@ -1,0 +1,154 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Mon, 9 Nov 2026 09:29:09 +0700
+Subject: [PATCH 18/23] BlueOS: ThemePicker: who is on the screen (up to 5),
+ text language, bubble follows, thrown when shaken
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I70e98bd5a70d2a01c6de5d0104775df2ea1279ef
+---
+ res/values-ru/blueos_09_strings.xml           | 14 ++++++--
+ res/values/blueos_09_strings.xml              | 14 ++++++--
+ .../blueos/BlueOSSettingsActivity.kt          | 32 +++++++++++++------
+ 3 files changed, 45 insertions(+), 15 deletions(-)
+
+diff --git a/res/values-ru/blueos_09_strings.xml b/res/values-ru/blueos_09_strings.xml
+index 9bb1d20c..9317d606 100644
+--- a/res/values-ru/blueos_09_strings.xml
++++ b/res/values-ru/blueos_09_strings.xml
+@@ -8,6 +8,8 @@
+     <string name="blueos_s_chibi_who">Кто на экране</string>
+     <string name="blueos_s_chibi_count"><xliff:g id="shown" example="2">%1$d</xliff:g> из <xliff:g id="all" example="3">%2$d</xliff:g></string>
+     <string name="blueos_s_chibi_none">Пока никого не добавлено</string>
++    <string name="blueos_s_chibi_who_max">Кто на экране (до <xliff:g id="max" example="5">%1$d</xliff:g>)</string>
++    <string name="blueos_s_chibi_max">Одновременно не больше <xliff:g id="max" example="5">%1$d</xliff:g>: сначала выключите кого-нибудь</string>
+     <string name="blueos_s_chibi_files">Файлы персонажа</string>
+     <string name="blueos_s_chibi_files_d">3D-модели учениц (.glb) добавляются вместе с остальными файлами — одной папкой или одним архивом</string>
+     <string name="blueos_s_h_chibi_life">Что они делают</string>
+@@ -21,10 +23,16 @@
+     <string name="blueos_s_chibi_depth_d">Сейчас <xliff:g id="pct" example="30">%d</xliff:g>. При 30 она садится ровно на край виджета, меньше — чуть выше, больше — чуть глубже</string>
+     <string name="blueos_s_chibi_pat">Можно гладить</string>
+     <string name="blueos_s_chibi_pat_d">Проведи пальцем по голове туда-сюда: она наклоняет голову под руку и радуется</string>
+-    <string name="blueos_s_chibi_acts">Занятия, как в кафе</string>
+-    <string name="blueos_s_chibi_acts_d">Иногда играет на своём инструменте или потягивается — если такие анимации есть в её модели</string>
++    <string name="blueos_s_chibi_acts">Занимаются своим</string>
++    <string name="blueos_s_chibi_acts_d">Иногда каждая делает что-то своё: свой жест, победную позу, позывной или EX-навык, а у кого есть — играет на инструменте</string>
++    <string name="blueos_s_chibi_toss">Кидает при тряске</string>
++    <string name="blueos_s_chibi_toss_d">Если резко тряхнуть телефон, их подбрасывает и кидает по экрану, а потом они приземляются на виджеты</string>
++    <string name="blueos_s_chibi_lang">Текст того, что она говорит</string>
++    <string name="blueos_s_chibi_lang_none">Без текста</string>
++    <string name="blueos_s_bubble_follow">Облачко следует за ней</string>
++    <string name="blueos_s_bubble_follow_d">Облачко с текстом двигается вместе с персонажем, когда листаешь экраны или телефон качается. Если выключить, оно остаётся там, где появилось</string>
+     <string name="blueos_s_chibi_touch">Касания</string>
+-    <string name="blueos_s_chibi_touch_d">Нажатие — она падает и потом встаёт. Удерживай — возьмёшь в руки, отпустишь — упадёт на ближайший виджет под ней. Поднеси её к краю экрана — перелистнётся на соседний экран. Подарок из виджета «Подарки» — реагирует, как в кафе. Свайпы мимо неё листают экраны как обычно</string>
++    <string name="blueos_s_chibi_touch_d">Нажатие — она смущается. Тряхнёшь телефон — у неё кружится голова. Уронишь телефон — она падает и потом встаёт. Удерживай — возьмёшь в руки, отпустишь — упадёт на ближайший виджет под ней. Поднеси её к краю экрана — перелистнётся на соседний экран. Подарок из виджета «Подарки» — реагирует, как в кафе. Свайпы мимо неё листают экраны как обычно</string>
+     <string name="blueos_s_h_chibi_sound">Звуки</string>
+     <string name="blueos_s_chibi_sound">Звуки</string>
+     <string name="blueos_s_chibi_sound_all">Звуки и голос</string>
+diff --git a/res/values/blueos_09_strings.xml b/res/values/blueos_09_strings.xml
+index 55a26200..db421da5 100644
+--- a/res/values/blueos_09_strings.xml
++++ b/res/values/blueos_09_strings.xml
+@@ -9,6 +9,8 @@
+     <string name="blueos_s_chibi_who">Who is on the screen</string>
+     <string name="blueos_s_chibi_count"><xliff:g id="shown" example="2">%1$d</xliff:g> of <xliff:g id="all" example="3">%2$d</xliff:g></string>
+     <string name="blueos_s_chibi_none">None added yet</string>
++    <string name="blueos_s_chibi_who_max">Who is on the screen (up to <xliff:g id="max" example="5">%1$d</xliff:g>)</string>
++    <string name="blueos_s_chibi_max">No more than <xliff:g id="max" example="5">%1$d</xliff:g> at once: turn one off first</string>
+     <string name="blueos_s_chibi_files">Character files</string>
+     <string name="blueos_s_chibi_files_d">Add the students\' 3D models (.glb) together with the other files — one folder or one archive</string>
+     <string name="blueos_s_h_chibi_life">What they do</string>
+@@ -22,10 +24,16 @@
+     <string name="blueos_s_chibi_depth_d">Now <xliff:g id="pct" example="30">%d</xliff:g>. At 30 she sits right on the widget\'s edge, less is a bit higher, more a bit lower</string>
+     <string name="blueos_s_chibi_pat">Patting</string>
+     <string name="blueos_s_chibi_pat_d">Move a finger left and right over her head: she leans her head into your hand and is happy</string>
+-    <string name="blueos_s_chibi_acts">Café activities</string>
+-    <string name="blueos_s_chibi_acts_d">Now and then she plays her own instrument or stretches — if her model has these animations</string>
++    <string name="blueos_s_chibi_acts">Each does her own thing</string>
++    <string name="blueos_s_chibi_acts_d">Now and then each does something of her own: her gesture, her victory pose, her callsign or her EX skill, and plays her instrument if she has one</string>
++    <string name="blueos_s_chibi_toss">Thrown around when shaken</string>
++    <string name="blueos_s_chibi_toss_d">Shake the phone hard and they fly around the screen, then land on the widgets</string>
++    <string name="blueos_s_chibi_lang">Text of what she says</string>
++    <string name="blueos_s_chibi_lang_none">No text</string>
++    <string name="blueos_s_bubble_follow">The bubble follows her</string>
++    <string name="blueos_s_bubble_follow_d">The text bubble moves with the character when you turn the pages or the phone sways. Off: it stays where it appeared</string>
+     <string name="blueos_s_chibi_touch">Touching her</string>
+-    <string name="blueos_s_chibi_touch_d">A tap: she falls down and gets up again. Hold her: you pick her up, let go and she drops onto the nearest widget below. Carry her to the screen\'s side to move to the next page. A gift from the Gifts widget: she reacts like in the café. Swipes past her still turn the pages</string>
++    <string name="blueos_s_chibi_touch_d">A tap: she gets shy. Shake the phone: she gets dizzy. Drop the phone: she falls down and gets up again. Hold her: you pick her up, let go and she drops onto the nearest widget below. Carry her to the screen\'s side to move to the next page. A gift from the Gifts widget: she reacts like in the café. Swipes past her still turn the pages</string>
+     <string name="blueos_s_h_chibi_sound">Sounds</string>
+     <string name="blueos_s_chibi_sound">Sounds</string>
+     <string name="blueos_s_chibi_sound_all">Sounds and voice</string>
+diff --git a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+index b7a25fb1..b7c930ed 100644
+--- a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
++++ b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+@@ -148,6 +148,7 @@ class BlueOSSettingsActivity : Activity() {
+             Item.ChoiceStr(K.ARONA_LANG, "ru", R.string.blueos_s_c_lang, listOf(
+                 R.string.blueos_s_lang_ru to "ru", R.string.blueos_s_lang_en to "en", R.string.blueos_s_lang_ja to "ja"),
+                 sub = true, dep = text),
++            Item.Sw(K.BUBBLE_FOLLOW, R.string.blueos_s_bubble_follow, R.string.blueos_s_bubble_follow_d, sub = true, dep = text),
+             Item.Sw(K.ARONA_NOTIF, R.string.blueos_s_notif, R.string.blueos_s_notif_d),
+             Item.Sw(K.ARONA_SLEEP, R.string.blueos_s_sleep, R.string.blueos_s_sleep_d),
+             Item.Header(R.string.blueos_s_h_aw),
+@@ -340,6 +341,7 @@ class BlueOSSettingsActivity : Activity() {
+             },
+             Item.Sw(K.CHIBI_PAT, R.string.blueos_s_chibi_pat, R.string.blueos_s_chibi_pat_d, dep = shown),
+             Item.Sw(K.CHIBI_ACTS, R.string.blueos_s_chibi_acts, R.string.blueos_s_chibi_acts_d, dep = shown),
++            Item.Sw(K.CHIBI_TOSS, R.string.blueos_s_chibi_toss, R.string.blueos_s_chibi_toss_d, dep = shown),
+             Item.Info(R.string.blueos_s_chibi_touch, R.string.blueos_s_chibi_touch_d),
+             Item.Header(R.string.blueos_s_h_chibi_sound),
+             Item.Choice(K.CHIBI_SOUND, R.string.blueos_s_chibi_sound, listOf(
+@@ -347,6 +349,11 @@ class BlueOSSettingsActivity : Activity() {
+                 R.string.blueos_s_chibi_sound_off to 0), dep = shown),
+             Item.Sw(K.CHIBI_TALK, R.string.blueos_s_chibi_talk, R.string.blueos_s_chibi_talk_d,
+                 dep = { shown() && int(K.CHIBI_SOUND) == 2 }),
++            Item.ChoiceStr(K.CHIBI_LANG, "ru", R.string.blueos_s_chibi_lang, listOf(
++                R.string.blueos_s_lang_ru to "ru", R.string.blueos_s_lang_en to "en", R.string.blueos_s_lang_ja to "ja",
++                R.string.blueos_s_chibi_lang_none to "none"), dep = { shown() && int(K.CHIBI_SOUND) == 2 }),
++            Item.Sw(K.BUBBLE_FOLLOW, R.string.blueos_s_bubble_follow, R.string.blueos_s_bubble_follow_d, sub = true,
++                dep = { shown() && int(K.CHIBI_SOUND) == 2 && K.string(contentResolver, K.CHIBI_LANG, "ru") != "none" }),
+             Item.Info(R.string.blueos_s_chibi_sound_info, R.string.blueos_s_chibi_sound_info_d),
+             Item.Header(R.string.blueos_s_h_chibi_look),
+             Item.Slider(K.CHIBI_SIZE, R.string.blueos_s_chibi_size, min = 80, max = 170, dep = shown) { v ->
+@@ -360,25 +367,32 @@ class BlueOSSettingsActivity : Activity() {
+         )
+     }
+ 
+-    private fun hiddenChibis() = K.string(contentResolver, K.CHIBI_HIDDEN, "").split(';').filter { it.isNotBlank() }.toSet()
++    private fun shownChibis() = org.blueos.arona.BlueOSMedia.chibisShown(Settings.Secure.getString(contentResolver, K.CHIBI_SHOWN))
++        .map { it.name.dropLast(4) }
+ 
+     private fun chibiCount(): String {
+         val all = org.blueos.arona.BlueOSMedia.chibis()
+         if (all.isEmpty()) return getString(R.string.blueos_s_chibi_none)
+-        val hidden = hiddenChibis()
+-        return getString(R.string.blueos_s_chibi_count, all.count { it.name.dropLast(4) !in hidden }, all.size)
++        return getString(R.string.blueos_s_chibi_count, shownChibis().size, all.size)
+     }
+ 
+-    /** Which of the user's chibis are on the home screen (all by default). */
++    /** Which of the user's chibis are on the home screen: the first 3 until picked, never more than CHIBI_MAX. */
+     private fun pickChibis() {
+         val names = org.blueos.arona.BlueOSMedia.chibis().map { it.name.dropLast(4) }
+         if (names.isEmpty()) { openAssets(); return }
+-        val hidden = hiddenChibis().toMutableSet()
+-        val checked = BooleanArray(names.size) { names[it] !in hidden }
++        val max = org.blueos.arona.BlueOSMedia.CHIBI_MAX
++        val shown = shownChibis().toMutableSet()
++        val checked = BooleanArray(names.size) { names[it] in shown }
+         android.app.AlertDialog.Builder(this)
+-            .setTitle(R.string.blueos_s_chibi_who)
+-            .setMultiChoiceItems(names.toTypedArray(), checked) { _, i, c -> if (c) hidden -= names[i] else hidden += names[i] }
+-            .setPositiveButton(android.R.string.ok) { _, _ -> put(K.CHIBI_HIDDEN, hidden.joinToString(";")) }
++            .setTitle(getString(R.string.blueos_s_chibi_who_max, max))
++            .setMultiChoiceItems(names.toTypedArray(), checked) { d, i, c ->
++                if (c && shown.size >= max) {
++                    // a sixth one: not checked, and say why
++                    (d as android.app.AlertDialog).listView.setItemChecked(i, false); checked[i] = false
++                    android.widget.Toast.makeText(this, getString(R.string.blueos_s_chibi_max, max), android.widget.Toast.LENGTH_SHORT).show()
++                } else if (c) shown += names[i] else shown -= names[i]
++            }
++            .setPositiveButton(android.R.string.ok) { _, _ -> put(K.CHIBI_SHOWN, names.filter { it in shown }.joinToString(";")) }
+             .setNegativeButton(android.R.string.cancel, null)
+             .show()
+     }

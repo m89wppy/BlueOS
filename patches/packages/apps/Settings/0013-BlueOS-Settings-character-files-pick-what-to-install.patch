@@ -1,0 +1,1367 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 02:29:38 +0700
+Subject: [PATCH 13/18] =?UTF-8?q?BlueOS:=20Settings:=20character=20files?=
+ =?UTF-8?q?=20=E2=80=94=20pick=20what=20to=20install=20or=20delete,=20lobb?=
+ =?UTF-8?q?ies=20with=20their=20voices=20and=20music,=20add=20more=20from?=
+ =?UTF-8?q?=20the=20same=20source?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I1c72681c0819914b87e475338fa82f00ce44a016
+---
+ res/values-ru/blueos_strings.xml              |  28 +-
+ res/values/blueos_strings.xml                 |  28 +-
+ .../settings/blueos/BlueOSAssetsActivity.kt   | 534 +++++++++++++++---
+ .../settings/blueos/BlueOSLobbyNames.kt       | 522 +++++++++++++++++
+ 4 files changed, 1042 insertions(+), 70 deletions(-)
+ create mode 100755 src/com/android/settings/blueos/BlueOSLobbyNames.kt
+
+diff --git a/res/values-ru/blueos_strings.xml b/res/values-ru/blueos_strings.xml
+index 930123d6cbe..2d5993889a2 100644
+--- a/res/values-ru/blueos_strings.xml
++++ b/res/values-ru/blueos_strings.xml
+@@ -49,7 +49,7 @@
+ 
+     <!-- 0.8.1: «Файлы персонажа» -->
+     <string name="blueos_assets_title">Файлы персонажа</string>
+-    <string name="blueos_assets_intro">В этой прошивке нет файлов из Blue Archive — их нельзя распространять. Если у вас есть свои файлы игры (модели Ароны и Планы, их голоса, звуки), выберите папку или архив .zip с ними — в любом виде, как распаковали. BlueOS сам найдёт нужные, проверит и добавит. Файлы останутся только на этом телефоне.</string>
++    <string name="blueos_assets_intro">В этой прошивке нет файлов из Blue Archive — их нельзя распространять. Если у вас есть свои файлы игры (модели Ароны и Планы, их голоса, звуки, чиби, лобби), выберите папку или архив .zip с ними — в любом виде, как распаковали. BlueOS сам найдёт нужные, проверит и добавит. Файлы останутся только на этом телефоне.</string>
+     <string name="blueos_assets_folder">Выбрать папку</string>
+     <string name="blueos_assets_zip">Выбрать архив .zip</string>
+     <string name="blueos_assets_apply">Перезагрузить телефон</string>
+@@ -73,9 +73,35 @@
+     <string name="blueos_assets_chibi">Чиби: <xliff:g id="count" example="4">%d</xliff:g></string>
+     <string name="blueos_assets_chibi_skipped">Пропущено файлов .glb: <xliff:g id="count" example="2">%d</xliff:g>. В них нет анимаций кафе (Cafe_Idle, Cafe_Walk), или это не 3D-модели с костями.</string>
+     <string name="blueos_assets_chibi_voice">Голоса чиби: <xliff:g id="count" example="3">%d</xliff:g></string>
++    <string name="blueos_assets_lobby">Лобби: <xliff:g id="count" example="2">%d</xliff:g></string>
++    <string name="blueos_assets_lobby_voice">Голоса лобби: <xliff:g id="count" example="2">%d</xliff:g></string>
+     <string name="blueos_assets_g_plana_voice">Голос Планы</string>
+     <string name="blueos_assets_g_ui">Звуки блокировки и касания</string>
+     <string name="blueos_assets_g_ringtones">Мелодии звонка</string>
+     <string name="blueos_assets_g_notifications">Уведомления</string>
+     <string name="blueos_assets_g_alarms">Будильники</string>
++    <!-- 0.9: choose what to add / remove -->
++    <string name="blueos_assets_pick_title">Что добавить</string>
++    <string name="blueos_assets_pick_add">Добавить</string>
++    <string name="blueos_assets_pick_all">Отметить всё</string>
++    <string name="blueos_assets_pick_none">Снять всё</string>
++    <string name="blueos_assets_have">уже есть</string>
++    <string name="blueos_assets_p_arona">Арона: модель, голос, звуки эмоций, парта</string>
++    <string name="blueos_assets_p_plana">Плана: модель и голос</string>
++    <string name="blueos_assets_p_ui">Звуки BlueOS: блокировка и касания</string>
++    <string name="blueos_assets_p_melodies">Мелодии звонка, уведомления, будильники</string>
++    <string name="blueos_assets_k_chibi">Чиби</string>
++    <string name="blueos_assets_k_chibi_voice">Голос чиби</string>
++    <string name="blueos_assets_k_lobby">Лобби</string>
++    <string name="blueos_assets_k_lobby_voice">Голоса лобби</string>
++    <string name="blueos_assets_k_lobby_music">Музыка лобби</string>
++    <string name="blueos_assets_del_title">Удалить файлы персонажа</string>
++    <string name="blueos_assets_del_msg">Удалить всё добавленное (файлов: <xliff:g id="count" example="72">%d</xliff:g>) или выбрать, что именно? Каждый пункт удаляется вместе со своим голосом.</string>
++    <string name="blueos_assets_del_all">Удалить всё</string>
++    <string name="blueos_assets_del_pick">Выбрать</string>
++    <string name="blueos_assets_del_pick_title">Что удалить</string>
++    <string name="blueos_assets_del_do">Удалить</string>
++    <string name="blueos_assets_deleted_some">Удалено: <xliff:g id="count" example="3">%d</xliff:g>. Перезагрузите телефон.</string>
++    <string name="blueos_assets_again">Добавить ещё из «<xliff:g id="name" example="BlueOS-файлы.zip">%s</xliff:g>»</string>
++    <string name="blueos_assets_again_gone">Эту папку или архив больше не прочитать: их перенесли или удалили. Выберите заново.</string>
+ </resources>
+diff --git a/res/values/blueos_strings.xml b/res/values/blueos_strings.xml
+index 51a3bd78105..d4864c4c8e3 100644
+--- a/res/values/blueos_strings.xml
++++ b/res/values/blueos_strings.xml
+@@ -55,7 +55,7 @@
+ 
+     <!-- 0.8.1: the user adds the characters' files (BlueOSAssetsActivity) -->
+     <string name="blueos_assets_title">Character files</string>
+-    <string name="blueos_assets_intro">This build has no files from Blue Archive — they can\'t be shared. If you have your own game files (the Arona and Plana models, their voices, sounds), pick a folder or a .zip with them, in any layout. BlueOS finds what it needs, checks it and adds it. The files stay on this phone only.</string>
++    <string name="blueos_assets_intro">This build has no files from Blue Archive — they can\'t be shared. If you have your own game files (the Arona and Plana models, their voices, sounds, chibis, memorial lobbies), pick a folder or a .zip with them, in any layout. BlueOS finds what it needs, checks it and adds it. The files stay on this phone only.</string>
+     <string name="blueos_assets_folder">Pick a folder</string>
+     <string name="blueos_assets_zip">Pick a .zip archive</string>
+     <string name="blueos_assets_apply">Restart the phone</string>
+@@ -79,10 +79,36 @@
+     <!-- BlueOS 0.9: 3D chibis (.glb) found anywhere in the picked folder or archive -->
+     <string name="blueos_assets_chibi">Chibis: <xliff:g id="count" example="4">%d</xliff:g></string>
+     <string name="blueos_assets_chibi_voice">Chibi voices: <xliff:g id="count" example="3">%d</xliff:g></string>
++    <string name="blueos_assets_lobby">Lobbies: <xliff:g id="count" example="2">%d</xliff:g></string>
++    <string name="blueos_assets_lobby_voice">Lobby voices: <xliff:g id="count" example="2">%d</xliff:g></string>
+     <string name="blueos_assets_chibi_skipped">.glb files skipped: <xliff:g id="count" example="2">%d</xliff:g>. They have no café animations (Cafe_Idle, Cafe_Walk) or aren\'t 3D models with bones.</string>
+     <string name="blueos_assets_g_plana_voice">Plana\'s voice</string>
+     <string name="blueos_assets_g_ui">Lock and touch sounds</string>
+     <string name="blueos_assets_g_ringtones">Ringtones</string>
+     <string name="blueos_assets_g_notifications">Notifications</string>
+     <string name="blueos_assets_g_alarms">Alarms</string>
++    <!-- 0.9: choose what to add / remove -->
++    <string name="blueos_assets_pick_title">What to add</string>
++    <string name="blueos_assets_pick_add">Add</string>
++    <string name="blueos_assets_pick_all">Select all</string>
++    <string name="blueos_assets_pick_none">Clear all</string>
++    <string name="blueos_assets_have">already added</string>
++    <string name="blueos_assets_p_arona">Arona: model, voice, emotion sounds, desk</string>
++    <string name="blueos_assets_p_plana">Plana: model and voice</string>
++    <string name="blueos_assets_p_ui">BlueOS sounds: lock and touch</string>
++    <string name="blueos_assets_p_melodies">Ringtones, notifications, alarms</string>
++    <string name="blueos_assets_k_chibi">Chibi</string>
++    <string name="blueos_assets_k_chibi_voice">Chibi voice</string>
++    <string name="blueos_assets_k_lobby">Lobby</string>
++    <string name="blueos_assets_k_lobby_voice">Lobby voice</string>
++    <string name="blueos_assets_k_lobby_music">Lobby music</string>
++    <string name="blueos_assets_del_title">Remove character files</string>
++    <string name="blueos_assets_del_msg">Remove everything you added (<xliff:g id="count" example="72">%d</xliff:g> files) or choose what exactly? Each item goes together with its voice.</string>
++    <string name="blueos_assets_del_all">Remove everything</string>
++    <string name="blueos_assets_del_pick">Choose</string>
++    <string name="blueos_assets_del_pick_title">What to remove</string>
++    <string name="blueos_assets_del_do">Remove</string>
++    <string name="blueos_assets_deleted_some">Removed: <xliff:g id="count" example="3">%d</xliff:g>. Restart the phone.</string>
++    <string name="blueos_assets_again">Add more from “<xliff:g id="name" example="BlueOS files.zip">%s</xliff:g>”</string>
++    <string name="blueos_assets_again_gone">That folder or archive cannot be read any more (moved or deleted). Pick it again.</string>
+ </resources>
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index e45bf646d91..d627f5cba46 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -6,6 +6,7 @@
+ package com.android.settings.blueos
+ 
+ import android.app.Activity
++import android.app.AlertDialog
+ import android.content.ContentValues
+ import android.content.Intent
+ import android.net.Uri
+@@ -18,6 +19,7 @@ import android.provider.DocumentsContract
+ import android.provider.DocumentsContract.Document
+ import android.provider.MediaStore
+ import android.system.Os
++import android.text.format.Formatter
+ import android.util.Log
+ import android.util.TypedValue
+ import android.view.View
+@@ -51,7 +53,37 @@ class BlueOSAssetsActivity : Activity() {
+     }
+ 
+     /** A file in the picked folder / archive: [path] = its folders, lowercased (who it belongs to). */
+-    private class Source(val name: String, val path: String, val size: Long, val key: String)
++    private class Source(val name: String, val path: String, var size: Long, val key: String) {
++        /** a lobby's .skel: whose voice lines (prefixes, as lobbyKey) and which music its events ask for */
++        var voiceRefs: Set<String> = emptySet()
++        var musicRefs: Set<String> = emptySet()
++    }
++
++    /**
++     * One thing the user can pick: a character, the sounds, one chibi, one lobby — with everything that belongs to it
++     * (her voice, the words of her lines, the lobby's room, voices and music).
++     */
++    private class Pack(val title: String, val have: Boolean, val order: Int) {
++        val files = mutableListOf<Pair<Source, (InputStream) -> Unit>>()
++        val targets = mutableListOf<Target>()
++        var desk = false                                                // carries the work page scene to cut
++        var size = 0L
++        fun add(s: Source, sink: (InputStream) -> Unit) { files += s to sink; if (s.size > 0) size += s.size }
++    }
++
++    /** What a picked folder / archive holds, ready to copy the picked [packs] with [copy]. */
++    private class Scan(val targets: List<Target>, val copy: (List<Pair<Source, (InputStream) -> Unit>>) -> Unit,
++                       val sceneDir: File) {
++        val packs = mutableListOf<Pack>()
++        val verified = HashSet<Target>()
++        var chibiOk = 0
++        var chibiSkipped = 0
++    }
++
++    /** Something already on the phone, for «Удалить → Выбрать». */
++    private class Owned(val title: String, val files: List<File>) {
++        val size = files.sumOf { f -> f.walkTopDown().filter { it.isFile }.sumOf { it.length() } }
++    }
+ 
+     private val main = Handler(Looper.getMainLooper())
+     private lateinit var status: TextView
+@@ -60,6 +92,7 @@ class BlueOSAssetsActivity : Activity() {
+     private lateinit var pickers: List<Button>
+     private lateinit var apply: Button
+     private lateinit var delete: Button
++    private lateinit var again: Button
+     private var busy = false
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+@@ -71,6 +104,12 @@ class BlueOSAssetsActivity : Activity() {
+             setPadding(pad, dp(16), pad, pad)
+         }
+         col.addView(text(getString(R.string.blueos_assets_intro)))
++        // the last folder / archive, remembered: more characters, lobbies, chibis from it without picking it again
++        again = button(R.string.blueos_assets_folder) {
++            val (uri, tree) = remembered() ?: return@button
++            scanFrom(uri, tree, again = true)
++        }
++        col.addView(again)
+         pickers = listOf(
+             button(R.string.blueos_assets_folder) {
+                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQ_TREE)
+@@ -87,7 +126,7 @@ class BlueOSAssetsActivity : Activity() {
+         report = text("").also { col.addView(it) }
+         apply = button(R.string.blueos_assets_apply) { restart() }.apply { visibility = View.GONE }
+         col.addView(apply)
+-        delete = button(R.string.blueos_assets_delete) { deleteAdded() }
++        delete = button(R.string.blueos_assets_delete) { deleteAsk() }
+         col.addView(delete)
+         val scroll = ScrollView(this).apply { addView(col) }
+         // edge to edge: the window reaches under the status bar and the action bar too (0.8.1 test build: the
+@@ -104,6 +143,7 @@ class BlueOSAssetsActivity : Activity() {
+         scroll.clipToPadding = false
+         setContentView(scroll)
+         showAdded()
++        showAgain()
+     }
+ 
+     // ------------------------------------------------------------------ ui
+@@ -146,6 +186,7 @@ class BlueOSAssetsActivity : Activity() {
+         progress.visibility = if (b) View.VISIBLE else View.GONE
+         pickers.forEach { it.isEnabled = !b }
+         delete.isEnabled = !b
++        again.isEnabled = !b
+         if (msg != null) status.setText(msg)
+     }
+ 
+@@ -155,29 +196,149 @@ class BlueOSAssetsActivity : Activity() {
+         super.onActivityResult(requestCode, resultCode, data)
+         val uri = data?.data ?: return
+         if (resultCode != RESULT_OK) return
++        remember(uri, requestCode == REQ_TREE)
++        scanFrom(uri, requestCode == REQ_TREE, again = false)
++    }
++
++    // ------------------------------------------------------------------ the remembered folder / archive
++
++    private val prefs get() = getSharedPreferences("blueos_assets", MODE_PRIVATE)
++
++    /** Keeps reading access to [uri] across restarts (Android's persisted grant) and lets the previous one go. */
++    private fun remember(uri: Uri, tree: Boolean) {
++        val old = prefs.getString(PREF_URI, null)?.let(Uri::parse)
++        try {
++            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
++        } catch (e: SecurityException) {
++            Log.w(TAG, "can't keep access to $uri", e); return
++        }
++        if (old != null && old != uri) {
++            try { contentResolver.releasePersistableUriPermission(old, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
++        }
++        val name = try {
++            val doc = if (tree) DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri)) else uri
++            contentResolver.query(doc, arrayOf(Document.COLUMN_DISPLAY_NAME), null, null, null)
++                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
++        } catch (e: Exception) { null }
++        prefs.edit().putString(PREF_URI, uri.toString()).putBoolean(PREF_TREE, tree)
++            .putString(PREF_NAME, name ?: uri.lastPathSegment?.substringAfterLast('/') ?: "").apply()
++        showAgain()
++    }
++
++    /** The remembered folder / archive, while Android still lets us read it. */
++    private fun remembered(): Pair<Uri, Boolean>? {
++        val uri = prefs.getString(PREF_URI, null)?.let(Uri::parse) ?: return null
++        if (contentResolver.persistedUriPermissions.none { it.uri == uri && it.isReadPermission }) return null
++        return uri to prefs.getBoolean(PREF_TREE, false)
++    }
++
++    private fun forget() {
++        remembered()?.let { (uri, _) ->
++            try { contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
++        }
++        prefs.edit().clear().apply()
++        showAgain()
++    }
++
++    private fun showAgain() {
++        val name = prefs.getString(PREF_NAME, "") ?: ""
++        if (remembered() == null) { again.visibility = View.GONE; return }
++        again.text = getString(R.string.blueos_assets_again, name)
++        again.visibility = View.VISIBLE
++    }
++
++    /** Looks through [uri] and shows «Что добавить». [again]: the remembered one — gone or unreadable = forgotten. */
++    private fun scanFrom(uri: Uri, tree: Boolean, again: Boolean) {
+         report.text = ""
+-        apply.visibility = View.GONE
++        apply.visibility = if (changed) View.VISIBLE else View.GONE
+         setBusy(true, R.string.blueos_assets_searching)
+         Thread({
+-            val text = try {
+-                if (requestCode == REQ_TREE) importTree(uri) else importZip(uri)
++            val scan = try {
++                if (tree) scanTree(uri) else scanZip(uri)
+             } catch (e: Exception) {
+                 Log.e(TAG, "import failed", e)
+-                getString(R.string.blueos_assets_error, e.message ?: e.javaClass.simpleName)
++                main.post {
++                    if (again) { forget(); done(getString(R.string.blueos_assets_again_gone)) }
++                    else done(getString(R.string.blueos_assets_error, e.message ?: e.javaClass.simpleName))
++                }
++                return@Thread
+             }
+             main.post {
+-                setBusy(false)
+-                status.text = ""
+-                report.text = text
+-                apply.visibility = if (changed) View.VISIBLE else View.GONE
+-                showAdded()
++                if (scan.packs.isEmpty()) done(getString(R.string.blueos_assets_none))
++                else { setBusy(false); status.text = ""; choose(scan) }
+             }
+         }, "BlueOSAssets").start()
+     }
+ 
++    private fun done(text: String) {
++        setBusy(false)
++        status.text = ""
++        report.text = text
++        apply.visibility = if (changed) View.VISIBLE else View.GONE
++        showAdded()
++    }
++
+     private var changed = false
+ 
+-    private fun importTree(tree: Uri): String {
++    /**
++     * «Что добавить»: everything found, one row each with its size; only the picked ones are copied, each with what
++     * belongs to it. Pre-checked: what isn't on the phone yet — all of it in a small pack, only the characters and
++     * sounds in a big collection (hundreds of lobbies would be gigabytes).
++     */
++    private fun choose(sc: Scan) {
++        val packs = sc.packs
++        val small = packs.size <= 12
++        val checked = BooleanArray(packs.size) { !packs[it].have && (small || packs[it].order <= 1) }
++        val labels = packs.map { p ->
++            buildString {
++                append(p.title)
++                if (p.size > 0) append(" · ").append(Formatter.formatShortFileSize(this@BlueOSAssetsActivity, p.size))
++                if (p.have) append(" · ").append(getString(R.string.blueos_assets_have))
++            }
++        }.toTypedArray()
++        var dialog: AlertDialog? = null
++        fun allLabel() = dialog?.getButton(AlertDialog.BUTTON_NEUTRAL)?.setText(
++            if (checked.all { it }) R.string.blueos_assets_pick_none else R.string.blueos_assets_pick_all)
++        val d = AlertDialog.Builder(this)
++            .setTitle(R.string.blueos_assets_pick_title)
++            .setMultiChoiceItems(labels, checked) { _, i, on -> checked[i] = on; allLabel() }
++            .setPositiveButton(R.string.blueos_assets_pick_add) { _, _ ->
++                val picked = packs.filterIndexed { i, _ -> checked[i] }
++                if (picked.isNotEmpty()) startCopy(sc, picked)
++            }
++            .setNegativeButton(android.R.string.cancel, null)
++            .setNeutralButton(R.string.blueos_assets_pick_all, null)
++            .show()
++        dialog = d
++        d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {              // doesn't close the list
++            val all = !checked.all { it }
++            for (i in checked.indices) { checked[i] = all; d.listView.setItemChecked(i, all) }
++            allLabel()
++        }
++        allLabel()
++    }
++
++    private fun startCopy(sc: Scan, picked: List<Pack>) {
++        setBusy(true, R.string.blueos_assets_copying)
++        Thread({
++            val text = try { copyPicked(sc, picked) } catch (e: Exception) {
++                Log.e(TAG, "import failed", e)
++                getString(R.string.blueos_assets_error, e.message ?: e.javaClass.simpleName)
++            }
++            main.post { done(text) }
++        }, "BlueOSAssets").start()
++    }
++
++    /** A lobby's .skel names its voice lines and music: read them while the file is at hand. */
++    private fun readRefs(s: Source, bytes: ByteArray) {
++        val text = String(bytes, Charsets.ISO_8859_1)
++        s.voiceRefs = voiceRefs(text)
++        s.musicRefs = musicRefs(text)
++    }
++
++    private fun isLobbySkel(name: String) = norm(name).endsWith("_home.skel")
++
++    private fun scanTree(tree: Uri): Scan {
+         val sources = mutableListOf<Source>()
+         fun walk(docId: String, path: String) {
+             val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId)
+@@ -193,7 +354,10 @@ class BlueOSAssetsActivity : Activity() {
+         }
+         val root = DocumentsContract.getTreeDocumentId(tree)
+         walk(root, root.lowercase())
+-        return import(sources) { wanted ->
++        for (s in sources.filter { isLobbySkel(it.name) }) {
++            contentResolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(tree, s.key))?.use { readRefs(s, it.readBytes()) }
++        }
++        return scan(sources) { wanted ->
+             for ((s, sink) in wanted) {
+                 contentResolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(tree, s.key))!!
+                     .use { sink(it) }
+@@ -201,22 +365,31 @@ class BlueOSAssetsActivity : Activity() {
+         }
+     }
+ 
+-    private fun importZip(zip: Uri): String {
++    private fun scanZip(zip: Uri): Scan {
+         val sources = mutableListOf<Source>()
+         ZipInputStream(contentResolver.openInputStream(zip)!!).use { z ->
+             while (true) {
+                 val e = z.nextEntry ?: break
+                 if (e.isDirectory) continue
+                 val path = e.name.substringBeforeLast('/', "").lowercase()
+-                sources += Source(e.name.substringAfterLast('/'), path, e.size, e.name)
++                val s = Source(e.name.substringAfterLast('/'), path, e.size, e.name)
++                if (isLobbySkel(s.name)) z.readBytes().let { b -> readRefs(s, b); s.size = b.size.toLong() }   // read anyway
++                else if (s.size < 0) {                    // streamed entry: its size only shows by reading (for «· 4 МБ»)
++                    var n = 0L
++                    while (true) { val k = z.skip(1L shl 20); if (k <= 0) break; n += k }
++                    s.size = n
++                }
++                sources += s
+             }
+         }
+-        return import(sources) { wanted ->
+-            val byKey = wanted.associateBy { it.first.key }
++        return scan(sources) { wanted ->
++            val byKey = wanted.groupBy({ it.first.key }, { it.second })
+             ZipInputStream(contentResolver.openInputStream(zip)!!).use { z ->
+                 while (true) {
+                     val e = z.nextEntry ?: break
+-                    byKey[e.name]?.second?.invoke(z)              // the entry's bytes; the zip stays open
++                    val sinks = byKey[e.name] ?: continue
++                    if (sinks.size == 1) sinks[0](z)               // the entry's bytes; the zip stays open
++                    else z.readBytes().let { b -> sinks.forEach { it(b.inputStream()) } }   // a line two of them use
+                 }
+             }
+         }
+@@ -284,68 +457,129 @@ class BlueOSAssetsActivity : Activity() {
+         return out
+     }
+ 
+-    /** [copy] gets each wanted source with what to do with its bytes. Returns the report. */
+-    private fun import(sources: List<Source>,
+-                       copy: (List<Pair<Source, (InputStream) -> Unit>>) -> Unit): String {
+-        val targets = targets()
+-        val found = match(targets, sources)
+-        // no cut desk: the work page scene it is cut from (its atlas, skeleton and pages)
++    /**
++     * Sorts what was found into [Pack]s (what the user picks from). [copy] later gets each wanted source with what to
++     * do with its bytes.
++     */
++    private fun scan(sources: List<Source>, copy: (List<Pair<Source, (InputStream) -> Unit>>) -> Unit): Scan {
++        val sc = Scan(targets(), copy, File(cacheDir, "workpage"))
++        val found = match(sc.targets, sources)
++
++        // characters and sounds: the checked list of files (assets-files.txt)
++        fun group(order: Int, title: Int, have: Boolean, scene: List<Source> = emptyList(), of: (String) -> Boolean) {
++            val ts = found.keys.filter { of(it.group) }.sortedBy { it.rel }
++            if (ts.isEmpty() && scene.isEmpty()) return
++            val p = Pack(getString(title), have, order)
++            for (t in ts) {
++                p.targets += t
++                p.add(found.getValue(t)) { input ->
++                    val d = dest(t)
++                    if (d != null) {
++                        if (write(input, File("$ADDED/$d/${t.name}")) == t.sha) sc.verified += t
++                    } else if (addSound(input, t)) {
++                        sc.verified += t
++                    }
++                }
++            }
++            for (s in scene) p.add(s) { input -> write(input, File(sc.sceneDir, norm(s.name))) }
++            p.desk = scene.isNotEmpty()
++            sc.packs += p
++        }
++        // no cut desk: the work page scene it is cut from (its atlas, skeleton and pages) goes with Arona
+         val deskFound = found.keys.any { it.group == "media/arona/desk" }
+         val scene = if (deskFound) emptyList() else sources.filter {
+             norm(it.name).startsWith(SCENE) && norm(it.name).substringAfterLast('.') in setOf("atlas", "skel", "png")
+         }
+-        // 0.9: 3D chibis — every .glb in any folder (the user's own models; checked after copying)
+-        val chibis = sources.filter { it.name.lowercase().endsWith(".glb") }.distinctBy { chibiName(it.name) }
+-        // 0.9: the chibis' voice lines — whose: the file's own prefix (the wiki's "Aoba_Lobby_1.ogg"), else its folder
+-        // ("Голоса/Aoba/Lobby_1.ogg", as scripts-claude/chibi-voices.py lays them out)
++        group(0, R.string.blueos_assets_p_arona, File("$ADDED/spine/arona").isDirectory, scene) { it.startsWith("media/arona/") }
++        group(0, R.string.blueos_assets_p_plana, File("$ADDED/spine/plana").isDirectory) { it.startsWith("media/plana/") }
++        group(1, R.string.blueos_assets_p_ui, File("$ADDED/audio/ui").isDirectory) { it == "media/audio/ui" }
++        group(1, R.string.blueos_assets_p_melodies, false) {
++            it == "media/audio/ringtones" || it == "media/audio/notifications" || it == "media/audio/alarms"
++        }
++
++        // 0.9: 3D chibis — every .glb in any folder (the user's own models; checked after copying), each with her
++        // voice lines (whose: the file's own prefix, the wiki's "Aoba_Lobby_1.ogg", else its folder, "Голоса/Aoba/
++        // Lobby_1.ogg" as scripts-claude/chibi-voices.py lays them out) and their words (lines.json next to them)
+         val voices = sources.mapNotNull { s -> chibiVoice(s)?.let { (who, line) -> Triple(s, who, line) } }
+-            .distinctBy { "${it.second}/${it.third}" }
+-        // and the words of those lines (lines.json next to them, from the wiki): shown over her head while she speaks
++            .distinctBy { "${it.second}/${it.third}" }.groupBy { it.second }
+         val texts = sources.filter { it.name.equals("lines.json", true) }
+             .mapNotNull { s -> chibiName(s.path.substringAfterLast('/').trim()).lowercase().takeIf { it.isNotEmpty() }?.let { s to it } }
+-            .distinctBy { it.second }
+-        if (found.isEmpty() && scene.isEmpty() && chibis.isEmpty() && voices.isEmpty() && texts.isEmpty()) return getString(R.string.blueos_assets_none)
+-
+-        setBusy(true, R.string.blueos_assets_copying)
+-        val verified = HashSet<Target>()
+-        val sceneDir = File(cacheDir, "workpage").apply { deleteRecursively(); mkdirs() }
+-        val wanted = mutableListOf<Pair<Source, (InputStream) -> Unit>>()
+-        for ((t, s) in found) {
+-            val d = dest(t)
+-            wanted += Pair<Source, (InputStream) -> Unit>(s) { input ->
+-                if (d != null) {
+-                    if (write(input, File("$ADDED/$d/${t.name}")) == t.sha) verified += t
+-                } else if (addSound(input, t)) {
+-                    verified += t
+-                }
+-            }
++            .distinctBy { it.second }.associate { it.second to it.first }
++        val voicedWho = HashSet<String>()
++        fun addChibiVoice(p: Pack, who: String) {
++            voices[who]?.forEach { (s, w, line) -> p.add(s) { input -> write(input, File("$ADDED/$CHIBI/voice/$w/$line")) } }
++            texts[who]?.let { s -> p.add(s) { input -> write(input, File("$ADDED/$CHIBI/voice/$who/lines.json")) } }
++            voicedWho += who
+         }
+-        for (s in scene) {
+-            wanted += Pair<Source, (InputStream) -> Unit>(s) { input -> write(input, File(sceneDir, norm(s.name))) }
+-        }
+-        var chibiOk = 0
+-        var chibiSkipped = 0
+-        for (s in chibis) {
+-            wanted += Pair<Source, (InputStream) -> Unit>(s) { input ->
+-                val f = File("$ADDED/$CHIBI/${chibiName(s.name)}")
++        val chibi = getString(R.string.blueos_assets_k_chibi)
++        for (s in sources.filter { it.name.lowercase().endsWith(".glb") }.distinctBy { chibiName(it.name) }) {
++            val file = chibiName(s.name)
++            val name = file.substringBeforeLast('.')
++            val p = Pack("$chibi · $name", File("$ADDED/$CHIBI/$file").isFile, 2)
++            p.add(s) { input ->
++                val f = File("$ADDED/$CHIBI/$file")
+                 write(input, f)
+-                if (isChibi(f)) chibiOk++ else { f.delete(); chibiSkipped++ }
++                if (isChibi(f)) sc.chibiOk++ else { f.delete(); sc.chibiSkipped++ }
+             }
++            addChibiVoice(p, name.lowercase())
++            sc.packs += p
+         }
+-        val voiced = HashSet<String>()
+-        for ((s, who, line) in voices) {
+-            wanted += Pair<Source, (InputStream) -> Unit>(s) { input ->
+-                write(input, File("$ADDED/$CHIBI/voice/$who/$line")); voiced += who
++        for (who in (voices.keys + texts.keys) - voicedWho) {          // a voice for a chibi already on the phone
++            val p = Pack("${getString(R.string.blueos_assets_k_chibi_voice)} · $who", File("$ADDED/$CHIBI/voice/$who").isDirectory, 3)
++            addChibiVoice(p, who)
++            sc.packs += p
++        }
++
++        // 0.9 «Лобби»: memorial lobbies (<Name>_home.skel + .atlas + pages, its room skeleton), each with the voice
++        // lines (<who>_MemorialLobby_N.ogg) and the music (BGM_*) its .skel asks for
++        val lobbyVoices = sources.mapNotNull { s -> LOBBY_VOICE.find(s.name)?.let { m -> s to lobbyKey(m.groupValues[1]) } }
++            .distinctBy { "${it.second}/${it.first.name.lowercase()}" }.groupBy({ it.second }, { it.first })
++        val lobbyMusic = sources.filter { LOBBY_MUSIC.matches(it.name) }.distinctBy { it.name.lowercase() }
++            .associateBy { it.name.lowercase() }
++        val usedKeys = HashSet<String>()
++        val usedMusic = HashSet<String>()
++        fun lobbyVoice(p: Pack, key: String) {
++            lobbyVoices[key]?.forEach { s -> p.add(s) { input -> write(input, File("$ADDED/$LOBBY/_voice/$key/${s.name}")) } }
++            usedKeys += key
++        }
++        fun lobbyTune(p: Pack, name: String) {
++            lobbyMusic[name]?.let { s -> p.add(s) { input -> write(input, File("$ADDED/$LOBBY/_music/${s.name}")) } }
++            usedMusic += name
++        }
++        val lobby = getString(R.string.blueos_assets_k_lobby)
++        for ((owner, files) in lobbyFiles(sources).groupBy { (_, dir) -> lobbyOwner(dir) }) {
++            val main = files.map { it.second }.firstOrNull { it.lowercase() == owner } ?: files.first().second
++            val skel = files.firstOrNull { (s, d) -> d == main && isLobbySkel(s.name) }?.first
++            val p = Pack("$lobby · ${lobbyTitle(main)}", File("$ADDED/$LOBBY/$main").isDirectory, 4)
++            for ((s, dir) in files) {
++                p.add(s) { input -> write(input, File("$ADDED/$LOBBY/$dir/${s.name.substring(0, norm(s.name).length)}")) }
+             }
++            lobbyKeys(main, skel?.voiceRefs.orEmpty(), lobbyVoices.keys).forEach { lobbyVoice(p, it) }
++            skel?.musicRefs?.forEach { lobbyTune(p, it) }
++            sc.packs += p
++        }
++        for (key in lobbyVoices.keys - usedKeys) {                     // voices for a lobby already on the phone
++            val p = Pack("${getString(R.string.blueos_assets_k_lobby_voice)} · $key", File("$ADDED/$LOBBY/_voice/$key").isDirectory, 5)
++            lobbyVoice(p, key)
++            sc.packs += p
+         }
+-        for ((s, who) in texts) {
+-            wanted += Pair<Source, (InputStream) -> Unit>(s) { input -> write(input, File("$ADDED/$CHIBI/voice/$who/lines.json")) }
++        (lobbyMusic.keys - usedMusic).takeIf { it.isNotEmpty() }?.let { rest ->
++            val p = Pack(getString(R.string.blueos_assets_k_lobby_music), false, 5)
++            rest.forEach { lobbyTune(p, it) }
++            sc.packs += p
+         }
+-        copy(wanted)
++        sc.packs.sortWith(compareBy({ it.order }, { it.title.lowercase() }))
++        return sc
++    }
++
++    /** Copies the picked packs. Returns the report. */
++    private fun copyPicked(sc: Scan, picked: List<Pack>): String {
++        val sceneDir = sc.sceneDir.apply { deleteRecursively(); mkdirs() }
++        sc.copy(picked.flatMap { it.files })
+         changed = true
+ 
+         var deskCut = false
+-        if (scene.isNotEmpty()) {
++        if (picked.any { it.desk }) {
+             setBusy(true, R.string.blueos_assets_desk)
+             val atlas = File(sceneDir, "$SCENE.atlas")
+             val skel = File(sceneDir, "$SCENE.skel")
+@@ -362,11 +596,66 @@ class BlueOSAssetsActivity : Activity() {
+             }
+         }
+         sceneDir.deleteRecursively()
+-        return report(targets, found.keys, verified, deskCut, chibiOk, chibiSkipped)
++        return report(sc.targets, picked.flatMap { it.targets }.toSet(), sc.verified, deskCut, sc.chibiOk, sc.chibiSkipped)
++    }
++
++    /**
++     * Whose voice lines a lobby uses: its own name (Shiroko_home → shiroko) and the prefixes its .skel names
++     * (Mashiro_swimsuit_home says CH0061_MemorialLobby_1). A prefix read from the binary may carry a stray letter in
++     * front, so a key it ends with counts too.
++     */
++    private fun lobbyKeys(name: String, refs: Set<String>, keys: Set<String>): Set<String> =
++        setOf(lobbyKey(name)) + refs.flatMap { r -> keys.filter { k -> r == k || r.endsWith(k) } }
++
++    /** The lobby a folder belongs to (lowercase): a room skeleton's folder → its lobby. */
++    private fun lobbyOwner(dir: String): String {
++        val l = dir.lowercase()
++        return when {
++            l.endsWith("_background") -> l.removeSuffix("_background")
++            l.endsWith("bg_home") -> l.removeSuffix("bg_home") + "_home"
++            l.endsWith("_bg") -> l.removeSuffix("_bg") + "_home"
++            else -> l
++        }
+     }
+ 
++    private fun voiceRefs(skel: String) = REF_VOICE.findAll(skel).map { lobbyKey(it.groupValues[1]) }.toSet()
++    private fun musicRefs(skel: String) = REF_MUSIC.findAll(skel).map { it.value.substringAfterLast('/').lowercase() }.toSet()
++
++    /**
++     * 0.9 «Лобби»: every lobby's files with the folder they go to (its own name, as in org.blueos.arona.BlueOSLobbies):
++     * <Name>_home.skel / .atlas and every .png whose name starts with it; <Name>_home_background.* go with it.
++     */
++    private fun lobbyFiles(sources: List<Source>): List<Pair<Source, String>> {
++        val skels = sources.filter { norm(it.name).endsWith(".skel") }
++            .map { norm(it.name).removeSuffix(".skel") to it }
++            .filter { (n, _) -> n.endsWith("_home") }
++        if (skels.isEmpty()) return emptyList()
++        // the folder keeps the file's own letters (Shiroko_home), as the .atlas names its pages
++        val names = skels.associate { (n, s) -> n to s.name.substring(0, n.length) }
++        val out = mutableListOf<Pair<Source, String>>()
++        for (s in sources) {
++            val n = norm(s.name)
++            val ext = n.substringAfterLast('.', "")
++            if (ext !in setOf("skel", "atlas", "png")) continue
++            // the room skeleton goes with its lobby: <name>_home_background.*, akari_bg.* (CH0060BG_home is a
++            // «_home» of its own folder, found next to CH0060_home by BlueOSLobbies)
++            val owner = names.keys.filter { n.startsWith(it) || n.startsWith(it.removeSuffix("_home") + "_bg") }
++                .maxByOrNull { it.length } ?: continue
++            out += s to names.getValue(owner)
++        }
++        return out.distinctBy { "${it.second}/${norm(it.first.name)}" }
++    }
++
++    /** «CH0058_home» → «Hifumi (Swimsuit)» (SchaleDB names, BlueOSLobbyNames); unknown → «Shiroko_home» → «Shiroko». */
++    private fun lobbyTitle(dir: String) =
++        BlueOSLobbyNames.NAMES[lobbyKey(dir)] ?: dir.removeSuffix("_home").replace('_', ' ')
++
++    /** «Shiroko_home» / «shiroko» / «HoshinoSwimsuit» → «shiroko» / «hoshinoswimsuit» (BlueOSLobbies.voiceKey). */
++    private fun lobbyKey(name: String) = name.lowercase().removeSuffix("_home").filter { it.isLetterOrDigit() }
++
+     /** A chibi's voice line: (her name as the launcher looks it up — lowercase, like the .glb's name, line file). */
+     private fun chibiVoice(s: Source): Pair<String, String>? {
++        if (LOBBY_VOICE.matches(s.name)) return null              // «…_MemorialLobby_1.ogg» is a lobby's, not «Lobby_1»
+         val m = VOICE.find(s.name) ?: return null
+         val prefix = s.name.substring(0, m.range.first).trimEnd('_', ' ').replace('_', ' ')
+         val who = prefix.ifEmpty { s.path.substringAfterLast('/') }.trim()
+@@ -458,9 +747,11 @@ class BlueOSAssetsActivity : Activity() {
+     private fun report(targets: List<Target>, found: Set<Target>, verified: Set<Target>, deskCut: Boolean,
+                        chibiOk: Int, chibiSkipped: Int): String {
+         val lines = mutableListOf<String>()
++        // only what was picked: Arona's lines when Arona was, not «Плана: 0 of 12» when only a lobby was
++        val owners = found.map { it.group.substringBeforeLast('/') }.toSet() + if (deskCut) setOf("media/arona") else emptySet()
+         for ((group, label) in GROUPS) {
+             val all = targets.filter { it.group == group }
+-            if (all.isEmpty()) continue
++            if (all.isEmpty() || group.substringBeforeLast('/') !in owners) continue
+             val n = found.count { it.group == group }
+             val desk = group == "media/arona/desk" && n == 0 && deskCut
+             val mark = if (n == all.size || desk) "✓" else if (n > 0) "•" else "—"
+@@ -475,6 +766,11 @@ class BlueOSAssetsActivity : Activity() {
+         if (chibiSkipped > 0) lines += getString(R.string.blueos_assets_chibi_skipped, chibiSkipped)
+         val voicedNow = File("$ADDED/$CHIBI/voice").listFiles { f -> f.isDirectory }?.size ?: 0
+         if (voicedNow > 0) lines += "✓ ${getString(R.string.blueos_assets_chibi_voice, voicedNow)}"
++        // 0.9 «Лобби»: all lobbies on the phone now
++        val lobbiesNow = File("$ADDED/$LOBBY").listFiles { f -> f.isDirectory && File(f, "${f.name}.skel").isFile }?.size ?: 0
++        if (lobbiesNow > 0) lines += "✓ ${getString(R.string.blueos_assets_lobby, lobbiesNow)}"
++        val lobbyVoicedNow = File("$ADDED/$LOBBY/_voice").listFiles { f -> f.isDirectory }?.size ?: 0
++        if (lobbyVoicedNow > 0) lines += "✓ ${getString(R.string.blueos_assets_lobby_voice, lobbyVoicedNow)}"
+         val odd = found.size - verified.size
+         if (odd > 0) lines += "\n" + getString(R.string.blueos_assets_odd, odd)
+         lines += "\n" + getString(R.string.blueos_assets_done)
+@@ -492,13 +788,52 @@ class BlueOSAssetsActivity : Activity() {
+         getSystemService(PowerManager::class.java).reboot(null)
+     }
+ 
+-    private fun deleteAdded() {
++    /** «Удалить всё» or «Выбрать» (the same items as when adding, each with its voice). */
++    private fun deleteAsk() {
++        AlertDialog.Builder(this)
++            .setTitle(R.string.blueos_assets_del_title)
++            .setMessage(getString(R.string.blueos_assets_del_msg, addedCount()))
++            .setPositiveButton(R.string.blueos_assets_del_pick) { _, _ -> deletePick() }
++            .setNeutralButton(R.string.blueos_assets_del_all) { _, _ ->
++                deleteFiles(File(ADDED).listFiles().orEmpty().toList(), getString(R.string.blueos_assets_deleted))
++            }
++            .setNegativeButton(android.R.string.cancel, null)
++            .show()
++    }
++
++    private fun deletePick() {
++        setBusy(true)
++        Thread({
++            val items = try { installed() } catch (e: Exception) { Log.e(TAG, "list", e); emptyList() }
++            main.post {
++                setBusy(false)
++                if (items.isEmpty()) return@post
++                val checked = BooleanArray(items.size)
++                val labels = items.map { o ->
++                    if (o.size > 0) "${o.title} · ${Formatter.formatShortFileSize(this, o.size)}" else o.title
++                }.toTypedArray()
++                AlertDialog.Builder(this)
++                    .setTitle(R.string.blueos_assets_del_pick_title)
++                    .setMultiChoiceItems(labels, checked) { _, i, on -> checked[i] = on }
++                    .setPositiveButton(R.string.blueos_assets_del_do) { _, _ ->
++                        val picked = items.filterIndexed { i, _ -> checked[i] }
++                        if (picked.isNotEmpty()) {
++                            deleteFiles(picked.flatMap { it.files }, getString(R.string.blueos_assets_deleted_some, picked.size))
++                        }
++                    }
++                    .setNegativeButton(android.R.string.cancel, null)
++                    .show()
++            }
++        }, "BlueOSAssets").start()
++    }
++
++    private fun deleteFiles(files: List<File>, done: String) {
+         setBusy(true)
+         Thread({
+-            File(ADDED).listFiles()?.forEach { it.deleteRecursively() }
++            files.forEach { it.deleteRecursively() }
+             main.post {
+                 setBusy(false)
+-                report.text = getString(R.string.blueos_assets_deleted)
++                report.text = done
+                 changed = true
+                 apply.visibility = View.VISIBLE
+                 showAdded()
+@@ -506,10 +841,65 @@ class BlueOSAssetsActivity : Activity() {
+         }, "BlueOSAssets").start()
+     }
+ 
++    /** What is on the phone now, in the same items as «Что добавить»: each with its voice (and a lobby's room, music). */
++    private fun installed(): List<Owned> {
++        val out = mutableListOf<Owned>()
++        fun add(title: String, vararg paths: String) {
++            val fs = paths.map { File("$ADDED/$it") }.filter { it.exists() }
++            if (fs.isNotEmpty()) out += Owned(title, fs)
++        }
++        add(getString(R.string.blueos_assets_p_arona), "spine/arona", "spine/arona_desk", "arona")
++        add(getString(R.string.blueos_assets_p_plana), "spine/plana", "plana")
++        add(getString(R.string.blueos_assets_p_ui), "audio/ui")
++
++        val chibiDir = File("$ADDED/$CHIBI")
++        val chibiVoices = File(chibiDir, "voice").listFiles { f -> f.isDirectory }.orEmpty().associateBy { it.name }
++        val voiced = HashSet<String>()
++        val chibi = getString(R.string.blueos_assets_k_chibi)
++        for (g in chibiDir.listFiles { f -> f.isFile && f.name.endsWith(".glb", true) }.orEmpty().sortedBy { it.name.lowercase() }) {
++            val who = g.nameWithoutExtension.lowercase()
++            out += Owned("$chibi · ${g.nameWithoutExtension}", listOfNotNull(g, chibiVoices[who]))
++            voiced += who
++        }
++        for ((who, d) in chibiVoices.toSortedMap()) {
++            if (who !in voiced) out += Owned("${getString(R.string.blueos_assets_k_chibi_voice)} · $who", listOf(d))
++        }
++
++        val lobbyDir = File("$ADDED/$LOBBY")
++        val dirs = lobbyDir.listFiles { f -> f.isDirectory && !f.name.startsWith("_") }.orEmpty().toList()
++        val lobbyVoices = File(lobbyDir, "_voice").listFiles { f -> f.isDirectory }.orEmpty().associateBy { it.name }
++        val music = File(lobbyDir, "_music").listFiles { f -> f.isFile }.orEmpty().associateBy { it.name.lowercase() }
++        val usedKeys = HashSet<String>()
++        val usedMusic = HashSet<String>()
++        val claimed = HashSet<File>()
++        val lobby = getString(R.string.blueos_assets_k_lobby)
++        for (d in dirs.filter { lobbyOwner(it.name) == it.name.lowercase() }.sortedBy { it.name.lowercase() }) {
++            val fs = mutableListOf(d)
++            fs += dirs.filter { it != d && lobbyOwner(it.name) == d.name.lowercase() }   // its room in a folder of its own
++            val skel = File(d, "${d.name}.skel")
++            val text = if (skel.isFile) String(skel.readBytes(), Charsets.ISO_8859_1) else ""
++            for (k in lobbyKeys(d.name, voiceRefs(text), lobbyVoices.keys)) lobbyVoices[k]?.let { fs += it; usedKeys += k }
++            for (m in musicRefs(text)) music[m]?.let { fs += it; usedMusic += m }
++            claimed += fs
++            out += Owned("$lobby · ${lobbyTitle(d.name)}", fs)
++        }
++        for (d in dirs) if (d !in claimed) out += Owned("$lobby · ${d.name}", listOf(d))
++        for ((k, d) in lobbyVoices.toSortedMap()) {
++            if (k !in usedKeys) out += Owned("${getString(R.string.blueos_assets_k_lobby_voice)} · $k", listOf(d))
++        }
++        music.filterKeys { it !in usedMusic }.values.takeIf { it.isNotEmpty() }?.let {
++            out += Owned(getString(R.string.blueos_assets_k_lobby_music), it.toList())
++        }
++        return out
++    }
++
+     companion object {
+         private const val TAG = "BlueOSAssets"
+         private const val REQ_TREE = 1
+         private const val REQ_ZIP = 2
++        private const val PREF_URI = "source"
++        private const val PREF_TREE = "source_is_folder"
++        private const val PREF_NAME = "source_name"
+         /** org.blueos.arona.BlueOSMedia.ADDED; created at boot by vendor/blueos/config/blueos.rc */
+         private const val ADDED = "/data/misc/blueos"
+         private const val LIST = "/product/etc/blueos/assets-files.txt"
+@@ -519,6 +909,14 @@ class BlueOSAssetsActivity : Activity() {
+         /** org.blueos.arona.BlueOSMedia.CHIBI: the 0.9 chibis' .glb files under [ADDED] */
+         private const val CHIBI = "chibi"
+         private val CHIBI_NEEDS = listOf("Cafe_Idle", "Cafe_Walk")
++        /** org.blueos.arona.BlueOSLobbies.DIR: the 0.9 memorial lobbies under [ADDED] */
++        private const val LOBBY = "lobby"
++        private val LOBBY_VOICE = Regex("""^(.+?)_MemorialLobby_\d+(_\d+)?\.(ogg|wav|mp3|m4a|opus)$""", RegexOption.IGNORE_CASE)
++        /** the lobbies' music: «BGM_12_….mp3» as some lobby files name it, «Theme_12.ogg» as the game does */
++        private val LOBBY_MUSIC = Regex("""^(BGM_.+|Theme[_ ]?\d+)\.(ogg|wav|mp3|m4a|opus)$""", RegexOption.IGNORE_CASE)
++        /** in a lobby's .skel (binary; read as Latin-1): the voice lines and music its events name */
++        private val REF_VOICE = Regex("""([A-Za-z0-9_]+?)_MemorialLobby_\d""", RegexOption.IGNORE_CASE)
++        private val REF_MUSIC = Regex("""BGM_[\x20-\x7E]+?\.(?:mp3|ogg|wav|m4a|opus)""", RegexOption.IGNORE_CASE)
+         private val MODE_FILE = "644".toInt(8)
+         private val MODE_DIR = "755".toInt(8)
+         /** Words in a file's name or folders that tell whose voice it is. */
+diff --git a/src/com/android/settings/blueos/BlueOSLobbyNames.kt b/src/com/android/settings/blueos/BlueOSLobbyNames.kt
+new file mode 100755
+index 00000000000..a83a9b31cd7
+--- /dev/null
++++ b/src/com/android/settings/blueos/BlueOSLobbyNames.kt
+@@ -0,0 +1,522 @@
++package com.android.settings.blueos
++
++// GENERATED by scripts-claude/gen-lobby-names.py from SchaleDB student data (the copy in
++// vendor/blueos/libs/arona BlueOSLobbyNames.kt also has the lobbies' music). Names only.
++
++/** Lobby folder (lowercase letters and digits without «_home») → the student's name. */
++internal object BlueOSLobbyNames {
++    @JvmField val NAMES: Map<String, String> = hashMapOf(
++        "airi" to "Airi",
++        "airiband" to "Airi (Band)",
++        "akane" to "Akane",
++        "akanebunnygirl" to "Akane (Bunny)",
++        "akaneuniform" to "Akane (School)",
++        "akari" to "Akari",
++        "akarinewyear" to "Akari (New Year)",
++        "ako" to "Ako",
++        "akodress" to "Ako (Dress)",
++        "anna" to "Anna",
++        "aoba" to "Aoba",
++        "aris" to "Aris",
++        "arisbattle" to "Aris (Armed)",
++        "arismaid" to "Aris (Maid)",
++        "aru" to "Aru",
++        "arudress" to "Aru (Dress)",
++        "arunewyear" to "Aru (New Year)",
++        "asuna" to "Asuna",
++        "asunabunnygirl" to "Asuna (Bunny)",
++        "asunauniform" to "Asuna (School)",
++        "atsuko" to "Atsuko",
++        "atsukoswimsuit" to "Atsuko (Swimsuit)",
++        "ayane" to "Ayane",
++        "ayaneswimsuit" to "Ayane (Swimsuit)",
++        "azusa" to "Azusa",
++        "azusaracing" to "Azusa (Racing)",
++        "azusaswimsuit" to "Azusa (Swimsuit)",
++        "ch0055" to "Hanako",
++        "ch0056" to "Azusa",
++        "ch0057" to "Koharu",
++        "ch0058" to "Hifumi (Swimsuit)",
++        "ch0059" to "Azusa (Swimsuit)",
++        "ch0060" to "Tsurugi (Swimsuit)",
++        "ch0061" to "Mashiro (Swimsuit)",
++        "ch0062" to "Izumi (Swimsuit)",
++        "ch0063" to "Hina (Swimsuit)",
++        "ch0064" to "Iori (Swimsuit)",
++        "ch0065" to "Shiroko (Cycling)",
++        "ch0066" to "Shun (Small)",
++        "ch0067" to "Sakurako",
++        "ch0068" to "Nagisa",
++        "ch0069" to "Mika",
++        "ch0070" to "Seia",
++        "ch0071" to "Ichika",
++        "ch0072" to "Mari",
++        "ch0073" to "Hinata",
++        "ch0075" to "Kazusa",
++        "ch0076" to "Erika",
++        "ch0077" to "Ibuki",
++        "ch0079" to "Makoto",
++        "ch0080" to "Satsuki",
++        "ch0081" to "Sena",
++        "ch0082" to "Sena (Casual)",
++        "ch0083" to "Ako",
++        "ch0084" to "Aru (New Year)",
++        "ch0085" to "Mutsuki (New Year)",
++        "ch0086" to "Kayoko (New Year)",
++        "ch0087" to "Haruka (New Year)",
++        "ch0088" to "Megu",
++        "ch0089" to "Kasumi",
++        "ch0090" to "Serika (New Year)",
++        "ch0091" to "Hoshino (Swimsuit)",
++        "ch0092" to "Nonomi (Swimsuit)",
++        "ch0095" to "Noa",
++        "ch0098" to "Asuna (Bunny)",
++        "ch0099" to "Akane (Bunny)",
++        "ch0100" to "Karin (Bunny)",
++        "ch0101" to "Neru (Bunny)",
++        "ch0103" to "Saori",
++        "ch0104" to "Atsuko",
++        "ch0105" to "Misaki",
++        "ch0106" to "Hiyori",
++        "ch0107" to "Kaho",
++        "ch0109" to "Niya",
++        "ch0110" to "Umika",
++        "ch0111" to "Wakamo",
++        "ch0113" to "Michiru",
++        "ch0114" to "Tsukuyo",
++        "ch0115" to "Mimori",
++        "ch0116" to "Kaede",
++        "ch0119" to "Marina",
++        "ch0120" to "Tomoe",
++        "ch0122" to "Shigure",
++        "ch0123" to "Shigure (Hot Spring)",
++        "ch0124" to "Meru",
++        "ch0126" to "Momiji",
++        "ch0133" to "Saya (Casual)",
++        "ch0134" to "Reijo",
++        "ch0135" to "Rumi",
++        "ch0136" to "Kirara",
++        "ch0137" to "Kokona",
++        "ch0138" to "Mina",
++        "ch0139" to "Kisaki",
++        "ch0140" to "Kirino",
++        "ch0141" to "Fubuki",
++        "ch0142" to "Miyako",
++        "ch0143" to "Moe",
++        "ch0144" to "Saki",
++        "ch0145" to "Miyu",
++        "ch0152" to "Mine",
++        "ch0155" to "Natsu",
++        "ch0156" to "Iroha",
++        "ch0158" to "Rio",
++        "ch0159" to "Himari",
++        "ch0160" to "Chihiro",
++        "ch0161" to "Yukari",
++        "ch0163" to "Chinatsu (Hot Spring)",
++        "ch0164" to "Cherino (Hot Spring)",
++        "ch0165" to "Nodoka (Hot Spring)",
++        "ch0166" to "Rabu",
++        "ch0167" to "Reisa",
++        "ch0169" to "Ui",
++        "ch0170" to "Kanna",
++        "ch0172" to "Niko",
++        "ch0173" to "Kurumi",
++        "ch0174" to "Otogi",
++        "ch0175" to "Wakamo (Swimsuit)",
++        "ch0176" to "Ayane (Swimsuit)",
++        "ch0177" to "Fuuka (New Year)",
++        "ch0178" to "Chise (Swimsuit)",
++        "ch0179" to "Izuna (Swimsuit)",
++        "ch0180" to "Shizuko (Swimsuit)",
++        "ch0181" to "Hibiki (Cheer Squad)",
++        "ch0182" to "Utaha (Cheer Squad)",
++        "ch0183" to "Mimori (Swimsuit)",
++        "ch0184" to "Yuuka (Track)",
++        "ch0185" to "Kotori (Cheer Squad)",
++        "ch0186" to "Mari (Track)",
++        "ch0187" to "Toki",
++        "ch0188" to "Shiroko (Swimsuit)",
++        "ch0189" to "Serika (Swimsuit)",
++        "ch0190" to "Hasumi (Track)",
++        "ch0191" to "Haruna (New Year)",
++        "ch0192" to "Junko (New Year)",
++        "ch0193" to "Haruna (Track)",
++        "ch0194" to "Serina (Christmas)",
++        "ch0195" to "Hanae (Christmas)",
++        "ch0196" to "Akari (New Year)",
++        "ch0197" to "Izumi (New Year)",
++        "ch0198" to "Koyuki",
++        "ch0200" to "Aris (Maid)",
++        "ch0201" to "Momoi (Maid)",
++        "ch0202" to "Midori (Maid)",
++        "ch0203" to "Yuzu (Maid)",
++        "ch0204" to "Ui (Swimsuit)",
++        "ch0205" to "Koharu (Swimsuit)",
++        "ch0209" to "Hanako (Swimsuit)",
++        "ch0210" to "Hinata (Swimsuit)",
++        "ch0211" to "Toki (Bunny)",
++        "ch0214" to "Minori",
++        "ch0215" to "Miyako (Swimsuit)",
++        "ch0216" to "Moe (Swimsuit)",
++        "ch0217" to "Saki (Swimsuit)",
++        "ch0218" to "Miyu (Swimsuit)",
++        "ch0219" to "Eimi (Swimsuit)",
++        "ch0220" to "Yoshimi (Band)",
++        "ch0221" to "Natsu (Band)",
++        "ch0222" to "Nagusa",
++        "ch0224" to "Renge",
++        "ch0225" to "Kikyou",
++        "ch0228" to "Yakumo",
++        "ch0229" to "Takane",
++        "ch0230" to "Hina (Dress)",
++        "ch0231" to "Ako (Dress)",
++        "ch0232" to "Kotama (Camp)",
++        "ch0233" to "Hare (Camp)",
++        "ch0235" to "Maki (Camp)",
++        "ch0238" to "Chiaki",
++        "ch0239" to "Kayoko (Dress)",
++        "ch0240" to "Aru (Dress)",
++        "ch0242" to "Hikari",
++        "ch0243" to "Nozomi",
++        "ch0245" to "Rei",
++        "ch0246" to "Mutsuki (Dress)",
++        "ch0247" to "Haruka (Dress)",
++        "ch0250" to "Kazusa (Band)",
++        "ch0251" to "Airi (Band)",
++        "ch0252" to "Tsumugi",
++        "ch0255" to "Tsubaki (Guide)",
++        "ch0257" to "Pina (Guide)",
++        "ch025801" to "Hoshino (Armed)",
++        "ch025802" to "Hoshino (Armed)",
++        "ch0259" to "Saori (Dress)",
++        "ch0260" to "Kanna (Swimsuit)",
++        "ch0261" to "Fubuki (Swimsuit)",
++        "ch0262" to "Kirino (Swimsuit)",
++        "ch0263" to "Shiroko*Terror",
++        "ch0264" to "Konoka",
++        "ch0266" to "Saori (Swimsuit)",
++        "ch0267" to "Atsuko (Swimsuit)",
++        "ch0268" to "Misaki (Swimsuit)",
++        "ch0269" to "Hiyori (Swimsuit)",
++        "ch0270" to "Marina (Qipao)",
++        "ch0271" to "Tomoe (Qipao)",
++        "ch0273" to "Mari (Pop Idol)",
++        "ch0274" to "Sakurako (Pop Idol)",
++        "ch0275" to "Mine (Pop Idol)",
++        "ch0280" to "Neru (School)",
++        "ch0281" to "Asuna (School)",
++        "ch0282" to "Karin (School)",
++        "ch0284" to "Yuuka (Pajamas)",
++        "ch0285" to "Noa (Pajamas)",
++        "ch0286" to "Juri (Part-Timer)",
++        "ch0287" to "Sumire (Part-Timer)",
++        "ch0288" to "Aoba",
++        "ch0291" to "Hasumi (Swimsuit)",
++        "ch0292" to "Ichika (Swimsuit)",
++        "ch0293" to "Nagisa (Swimsuit)",
++        "ch0294" to "Mika (Swimsuit)",
++        "ch0295" to "Seia (Swimsuit)",
++        "ch0296" to "Michiru (Dress)",
++        "ch0297" to "Tsukuyo (Dress)",
++        "ch0300" to "Kikyou (Swimsuit)",
++        "ch0301" to "Yukari (Swimsuit)",
++        "ch0302" to "Renge (Swimsuit)",
++        "ch0303" to "Nagusa (Swimsuit)",
++        "ch0304" to "Eri",
++        "ch0305" to "Rena",
++        "ch0306" to "Kanoe",
++        "ch0307" to "Akane (School)",
++        "ch0309" to "Subaru",
++        "ch0310" to "Koyuki (Pajamas)",
++        "ch0317" to "Miyo",
++        "ch0318" to "Fuyu",
++        "ch0319" to "Ritsu",
++        "ch0320" to "Anna",
++        "ch0321" to "Erina",
++        "ch0322" to "Rana",
++        "ch0325" to "Suzumi (Magical)",
++        "ch0326" to "Reisa (Magical)",
++        "ch0328" to "Kasumi (Swimsuit)",
++        "ch0331" to "Rio (Armed)",
++        "ch0332" to "Himari (Armed)",
++        "ch0333" to "Toki (Armed)",
++        "ch0334" to "Aris (Armed)",
++        "ch0335" to "Kei",
++        "ch0336" to "Yuzu (Armed)",
++        "ch0337" to "Eimi (Armed)",
++        "ch0344" to "Makoto (Swimsuit)",
++        "ch0345" to "Satsuki (Swimsuit)",
++        "ch0346" to "Iroha (Swimsuit)",
++        "ch0347" to "Ibuki (Swimsuit)",
++        "ch0348" to "Chiaki (Swimsuit)",
++        "ch035501" to "Shun (Swimsuit)",
++        "ch035502" to "Shunling (Swimsuit)",
++        "ch0356" to "Kisaki (Swimsuit)",
++        "ch0368" to "Kokoro",
++        "ch0369" to "Kotone",
++        "ch0379" to "Hifumi (Racing)",
++        "ch0380" to "Azusa (Racing)",
++        "ch9996" to "Saten Ruiko",
++        "ch9997" to "Shokuhou Misaki",
++        "ch9998" to "Misaka Mikoto",
++        "ch9999" to "Hatsune Miku",
++        "cherino" to "Cherino",
++        "cherinoonsen" to "Cherino (Hot Spring)",
++        "chiaki" to "Chiaki",
++        "chiakiswimsuit" to "Chiaki (Swimsuit)",
++        "chihiro" to "Chihiro",
++        "chinatsu" to "Chinatsu",
++        "chinatsuonsen" to "Chinatsu (Hot Spring)",
++        "chise" to "Chise",
++        "chiseswimsuit" to "Chise (Swimsuit)",
++        "eimi" to "Eimi",
++        "eimibattle" to "Eimi (Armed)",
++        "eimiswimsuit" to "Eimi (Swimsuit)",
++        "eri" to "Eri",
++        "erika" to "Erika",
++        "erina" to "Erina",
++        "fubuki" to "Fubuki",
++        "fubukiswimsuit" to "Fubuki (Swimsuit)",
++        "fuuka" to "Fuuka",
++        "fuukanewyear" to "Fuuka (New Year)",
++        "fuyu" to "Fuyu",
++        "hanae" to "Hanae",
++        "hanaechristmas" to "Hanae (Christmas)",
++        "hanako" to "Hanako",
++        "hanakoswimsuit" to "Hanako (Swimsuit)",
++        "hare" to "Hare",
++        "harecamp" to "Hare (Camp)",
++        "haruka" to "Haruka",
++        "harukadress" to "Haruka (Dress)",
++        "harukanewyear" to "Haruka (New Year)",
++        "haruna" to "Haruna",
++        "harunanewyear" to "Haruna (New Year)",
++        "harunatrack" to "Haruna (Track)",
++        "hasumi" to "Hasumi",
++        "hasumiswimsuit" to "Hasumi (Swimsuit)",
++        "hasumitrack" to "Hasumi (Track)",
++        "hatsunemiku" to "Hatsune Miku",
++        "hibiki" to "Hibiki",
++        "hibikicheerleader" to "Hibiki (Cheer Squad)",
++        "hifumi" to "Hifumi",
++        "hifumiracing" to "Hifumi (Racing)",
++        "hifumiswimsuit" to "Hifumi (Swimsuit)",
++        "hihumi" to "Hifumi",
++        "hikari" to "Hikari",
++        "himari" to "Himari",
++        "himaribattle" to "Himari (Armed)",
++        "hina" to "Hina",
++        "hinadress" to "Hina (Dress)",
++        "hinaswimsuit" to "Hina (Swimsuit)",
++        "hinata" to "Hinata",
++        "hinataswimsuit" to "Hinata (Swimsuit)",
++        "hiyori" to "Hiyori",
++        "hiyoriswimsuit" to "Hiyori (Swimsuit)",
++        "hoshino" to "Hoshino",
++        "hoshinobattledealer" to "Hoshino (Armed)",
++        "hoshinobattletank" to "Hoshino (Armed)",
++        "hoshinoswimsuit" to "Hoshino (Swimsuit)",
++        "ibuki" to "Ibuki",
++        "ibukiswimsuit" to "Ibuki (Swimsuit)",
++        "ichika" to "Ichika",
++        "ichikaswimsuit" to "Ichika (Swimsuit)",
++        "iori" to "Iori",
++        "ioriswimsuit" to "Iori (Swimsuit)",
++        "iroha" to "Iroha",
++        "irohaswimsuit" to "Iroha (Swimsuit)",
++        "izumi" to "Izumi",
++        "izuminewyear" to "Izumi (New Year)",
++        "izumiswimsuit" to "Izumi (Swimsuit)",
++        "izuna" to "Izuna",
++        "izunaswimsuit" to "Izuna (Swimsuit)",
++        "junko" to "Junko",
++        "junkonewyear" to "Junko (New Year)",
++        "juri" to "Juri",
++        "juriparttime" to "Juri (Part-Timer)",
++        "kaede" to "Kaede",
++        "kaho" to "Kaho",
++        "kanna" to "Kanna",
++        "kannaswimsuit" to "Kanna (Swimsuit)",
++        "kanoe" to "Kanoe",
++        "karin" to "Karin",
++        "karinbunnygirl" to "Karin (Bunny)",
++        "karinuniform" to "Karin (School)",
++        "kasumi" to "Kasumi",
++        "kasumiswimsuit" to "Kasumi (Swimsuit)",
++        "kayoko" to "Kayoko",
++        "kayokodress" to "Kayoko (Dress)",
++        "kayokonewyear" to "Kayoko (New Year)",
++        "kazusa" to "Kazusa",
++        "kazusaband" to "Kazusa (Band)",
++        "kei" to "Kei",
++        "kikyou" to "Kikyou",
++        "kikyouswimsuit" to "Kikyou (Swimsuit)",
++        "kirara" to "Kirara",
++        "kirino" to "Kirino",
++        "kirinoswimsuit" to "Kirino (Swimsuit)",
++        "kisaki" to "Kisaki",
++        "kisakiswimsuit" to "Kisaki (Swimsuit)",
++        "koharu" to "Koharu",
++        "koharuswimsuit" to "Koharu (Swimsuit)",
++        "kokona" to "Kokona",
++        "kokoro" to "Kokoro",
++        "konoka" to "Konoka",
++        "kotama" to "Kotama",
++        "kotamacamp" to "Kotama (Camp)",
++        "kotone" to "Kotone",
++        "kotori" to "Kotori",
++        "kotoricheerleader" to "Kotori (Cheer Squad)",
++        "koyuki" to "Koyuki",
++        "koyukipajama" to "Koyuki (Pajamas)",
++        "kurumi" to "Kurumi",
++        "maki" to "Maki",
++        "makicamp" to "Maki (Camp)",
++        "makoto" to "Makoto",
++        "makotoswimsuit" to "Makoto (Swimsuit)",
++        "mari" to "Mari",
++        "mariidol" to "Mari (Pop Idol)",
++        "marina" to "Marina",
++        "marinaqipao" to "Marina (Qipao)",
++        "maritrack" to "Mari (Track)",
++        "mashiro" to "Mashiro",
++        "mashiroswimsuit" to "Mashiro (Swimsuit)",
++        "megu" to "Megu",
++        "meru" to "Meru",
++        "michiru" to "Michiru",
++        "michirudress" to "Michiru (Dress)",
++        "midori" to "Midori",
++        "midorimaid" to "Midori (Maid)",
++        "mika" to "Mika",
++        "mikaswimsuit" to "Mika (Swimsuit)",
++        "mimori" to "Mimori",
++        "mimoriswimsuit" to "Mimori (Swimsuit)",
++        "mina" to "Mina",
++        "mine" to "Mine",
++        "mineidol" to "Mine (Pop Idol)",
++        "minori" to "Minori",
++        "misakamikoto" to "Misaka Mikoto",
++        "misaki" to "Misaki",
++        "misakiswimsuit" to "Misaki (Swimsuit)",
++        "miyako" to "Miyako",
++        "miyakoswimsuit" to "Miyako (Swimsuit)",
++        "miyo" to "Miyo",
++        "miyu" to "Miyu",
++        "miyuswimsuit" to "Miyu (Swimsuit)",
++        "moe" to "Moe",
++        "moeswimsuit" to "Moe (Swimsuit)",
++        "momiji" to "Momiji",
++        "momoi" to "Momoi",
++        "momoimaid" to "Momoi (Maid)",
++        "mutsuki" to "Mutsuki",
++        "mutsukidress" to "Mutsuki (Dress)",
++        "mutsukinewyear" to "Mutsuki (New Year)",
++        "nagisa" to "Nagisa",
++        "nagisaswimsuit" to "Nagisa (Swimsuit)",
++        "nagusa" to "Nagusa",
++        "nagusaswimsuit" to "Nagusa (Swimsuit)",
++        "natsu" to "Natsu",
++        "natsuband" to "Natsu (Band)",
++        "neru" to "Neru",
++        "nerubunnygirl" to "Neru (Bunny)",
++        "neruuniform" to "Neru (School)",
++        "niko" to "Niko",
++        "niya" to "Niya",
++        "noa" to "Noa",
++        "noapajama" to "Noa (Pajamas)",
++        "nodoka" to "Nodoka",
++        "nodokaonsen" to "Nodoka (Hot Spring)",
++        "nonomi" to "Nonomi",
++        "nonomiswimsuit" to "Nonomi (Swimsuit)",
++        "nozomi" to "Nozomi",
++        "otogi" to "Otogi",
++        "pina" to "Pina",
++        "pinaguide" to "Pina (Guide)",
++        "rabu" to "Rabu",
++        "rana" to "Rana",
++        "rei" to "Rei",
++        "reijo" to "Reijo",
++        "reisa" to "Reisa",
++        "reisamagical" to "Reisa (Magical)",
++        "reizyo" to "Reijo",
++        "rena" to "Rena",
++        "renge" to "Renge",
++        "rengeswimsuit" to "Renge (Swimsuit)",
++        "rio" to "Rio",
++        "riobattle" to "Rio (Armed)",
++        "ritsu" to "Ritsu",
++        "rumi" to "Rumi",
++        "saki" to "Saki",
++        "sakiswimsuit" to "Saki (Swimsuit)",
++        "sakurako" to "Sakurako",
++        "sakurakoidol" to "Sakurako (Pop Idol)",
++        "saori" to "Saori",
++        "saoridress" to "Saori (Dress)",
++        "saoriswimsuit" to "Saori (Swimsuit)",
++        "satenruiko" to "Saten Ruiko",
++        "satsuki" to "Satsuki",
++        "satsukiswimsuit" to "Satsuki (Swimsuit)",
++        "saya" to "Saya",
++        "sayacasual" to "Saya (Casual)",
++        "seia" to "Seia",
++        "seiaswimsuit" to "Seia (Swimsuit)",
++        "sena" to "Sena",
++        "senacasual" to "Sena (Casual)",
++        "serika" to "Serika",
++        "serikanewyear" to "Serika (New Year)",
++        "serikaswimsuit" to "Serika (Swimsuit)",
++        "serina" to "Serina",
++        "serinachristmas" to "Serina (Christmas)",
++        "shigure" to "Shigure",
++        "shigureonsen" to "Shigure (Hot Spring)",
++        "shimiko" to "Shimiko",
++        "shiroko" to "Shiroko",
++        "shirokocycling" to "Shiroko (Cycling)",
++        "shirokoridingsuit" to "Shiroko (Cycling)",
++        "shirokoswimsuit" to "Shiroko (Swimsuit)",
++        "shirokoterror" to "Shiroko*Terror",
++        "shizuko" to "Shizuko",
++        "shizukoswimsuit" to "Shizuko (Swimsuit)",
++        "shokuhoumisaki" to "Shokuhou Misaki",
++        "shun" to "Shun",
++        "shunlingswimsuit" to "Shunling (Swimsuit)",
++        "shunsmall" to "Shun (Small)",
++        "shunswimsuit" to "Shun (Swimsuit)",
++        "subaru" to "Subaru",
++        "sumire" to "Sumire",
++        "sumireparttime" to "Sumire (Part-Timer)",
++        "suzumi" to "Suzumi",
++        "suzumimagical" to "Suzumi (Magical)",
++        "takane" to "Takane",
++        "toki" to "Toki",
++        "tokibattle" to "Toki (Armed)",
++        "tokibunnygirl" to "Toki (Bunny)",
++        "tomoe" to "Tomoe",
++        "tomoeqipao" to "Tomoe (Qipao)",
++        "tsubaki" to "Tsubaki",
++        "tsubakiguide" to "Tsubaki (Guide)",
++        "tsukuyo" to "Tsukuyo",
++        "tsukuyodress" to "Tsukuyo (Dress)",
++        "tsumugi" to "Tsumugi",
++        "tsurugi" to "Tsurugi",
++        "tsurugiswimsuit" to "Tsurugi (Swimsuit)",
++        "ui" to "Ui",
++        "uiswimsuit" to "Ui (Swimsuit)",
++        "umika" to "Umika",
++        "utaha" to "Utaha",
++        "utahacheerleader" to "Utaha (Cheer Squad)",
++        "wakamo" to "Wakamo",
++        "wakamoswimsuit" to "Wakamo (Swimsuit)",
++        "yakumo" to "Yakumo",
++        "yoshimi" to "Yoshimi",
++        "yoshimiband" to "Yoshimi (Band)",
++        "yukari" to "Yukari",
++        "yukariswimsuit" to "Yukari (Swimsuit)",
++        "yuuka" to "Yuuka",
++        "yuukapajama" to "Yuuka (Pajamas)",
++        "yuukatrack" to "Yuuka (Track)",
++        "yuzu" to "Yuzu",
++        "yuzubattle" to "Yuzu (Armed)",
++        "yuzumaid" to "Yuzu (Maid)",
++        "zunko" to "Junko",
++    )
++}

@@ -1,57 +1,63 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sat, 14 Nov 2026 09:54:14 +0700
-Subject: [PATCH] BlueOS: credit header in every BlueOS source file
+Subject: [PATCH 4/4] BlueOS: credit header in every BlueOS source file
 
+So that anyone reusing BlueOS code (or their tools) sees where it
+comes from and what the licence asks: keep NOTICE and credit BlueOS by GDmio.
+
+Change-Id: I41f0445da939ee780a0868f36507759cb635e54a
 ---
+ .../lineageos/glimpse/widgets/BlueOSPhotoConfigActivity.kt  | 6 +++++-
+ .../org/lineageos/glimpse/widgets/BlueOSPhotoProvider.kt    | 6 +++++-
+ .../lineageos/glimpse/widgets/BlueOSPhotoWidgetProvider.kt  | 6 +++++-
+ 3 files changed, 15 insertions(+), 3 deletions(-)
+
 diff --git a/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoConfigActivity.kt b/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoConfigActivity.kt
-index df7b52a..494c480 100644
+index df7b52a..24f3ed5 100644
 --- a/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoConfigActivity.kt
 +++ b/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoConfigActivity.kt
-@@ -1,3 +1,12 @@
-+/*
+@@ -1,6 +1,10 @@
+ /*
+- * SPDX-FileCopyrightText: 2026 BlueOS
 + * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
-+ * SPDX-License-Identifier: Apache-2.0
+  * SPDX-License-Identifier: Apache-2.0
 + *
 + * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
 + * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
-+ */
-+
- /*
-  * SPDX-FileCopyrightText: 2026 BlueOS
-  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+ package org.lineageos.glimpse.widgets
 diff --git a/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoProvider.kt b/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoProvider.kt
-index 6973ca6..86adf49 100644
+index 6973ca6..98f2898 100644
 --- a/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoProvider.kt
 +++ b/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoProvider.kt
-@@ -1,3 +1,12 @@
-+/*
+@@ -1,6 +1,10 @@
+ /*
+- * SPDX-FileCopyrightText: 2026 BlueOS
 + * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
-+ * SPDX-License-Identifier: Apache-2.0
+  * SPDX-License-Identifier: Apache-2.0
 + *
 + * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
 + * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
-+ */
-+
- /*
-  * SPDX-FileCopyrightText: 2026 BlueOS
-  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+ package org.lineageos.glimpse.widgets
 diff --git a/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoWidgetProvider.kt b/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoWidgetProvider.kt
-index 91d8c97..7af02ac 100644
+index 91d8c97..1940810 100644
 --- a/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoWidgetProvider.kt
 +++ b/app/src/main/java/org/lineageos/glimpse/widgets/BlueOSPhotoWidgetProvider.kt
-@@ -1,3 +1,12 @@
-+/*
+@@ -1,6 +1,10 @@
+ /*
+- * SPDX-FileCopyrightText: 2026 BlueOS
 + * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
-+ * SPDX-License-Identifier: Apache-2.0
+  * SPDX-License-Identifier: Apache-2.0
 + *
 + * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
 + * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
-+ */
-+
- /*
-  * SPDX-FileCopyrightText: 2026 BlueOS
-  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+ package org.lineageos.glimpse.widgets

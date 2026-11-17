@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Mon, 9 Nov 2026 09:29:09 +0700
+Subject: [PATCH 12/18] BlueOS: Settings: character files also take the chibis'
+ line texts
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I41fa9bd63355707ec053e2dfb72afa38c8eb41b3
+---
+ src/com/android/settings/blueos/BlueOSAssetsActivity.kt | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index 09dda0031a9..e45bf646d91 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -300,7 +300,11 @@ class BlueOSAssetsActivity : Activity() {
+         // ("Голоса/Aoba/Lobby_1.ogg", as scripts-claude/chibi-voices.py lays them out)
+         val voices = sources.mapNotNull { s -> chibiVoice(s)?.let { (who, line) -> Triple(s, who, line) } }
+             .distinctBy { "${it.second}/${it.third}" }
+-        if (found.isEmpty() && scene.isEmpty() && chibis.isEmpty() && voices.isEmpty()) return getString(R.string.blueos_assets_none)
++        // and the words of those lines (lines.json next to them, from the wiki): shown over her head while she speaks
++        val texts = sources.filter { it.name.equals("lines.json", true) }
++            .mapNotNull { s -> chibiName(s.path.substringAfterLast('/').trim()).lowercase().takeIf { it.isNotEmpty() }?.let { s to it } }
++            .distinctBy { it.second }
++        if (found.isEmpty() && scene.isEmpty() && chibis.isEmpty() && voices.isEmpty() && texts.isEmpty()) return getString(R.string.blueos_assets_none)
+ 
+         setBusy(true, R.string.blueos_assets_copying)
+         val verified = HashSet<Target>()
+@@ -334,6 +338,9 @@ class BlueOSAssetsActivity : Activity() {
+                 write(input, File("$ADDED/$CHIBI/voice/$who/$line")); voiced += who
+             }
+         }
++        for ((s, who) in texts) {
++            wanted += Pair<Source, (InputStream) -> Unit>(s) { input -> write(input, File("$ADDED/$CHIBI/voice/$who/lines.json")) }
++        }
+         copy(wanted)
+         changed = true
+ 

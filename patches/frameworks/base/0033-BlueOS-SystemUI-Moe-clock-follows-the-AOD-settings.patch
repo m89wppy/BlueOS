@@ -1,0 +1,57 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Tue, 10 Nov 2026 14:21:18 +0700
+Subject: [PATCH 33/42] BlueOS: SystemUI: Moe clock follows the AOD settings
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+On AOD the Moe digit pictures always went to 45 % and grey, whatever «Цвета» said; dark pixel art fell into the panel's lowest levels. Now: as bright as «Яркость AOD», own colours with «Как на экране блокировки», otherwise a lifted grey.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Change-Id: Ib1b4919115380932a1ec7d972042616a18b0f2b1
+---
+ .../shared/clocks/view/BitmapClockView.kt     | 25 +++++++++++++------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
+
+diff --git a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BitmapClockView.kt b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BitmapClockView.kt
+index 1b51a7d70bcb..4bdd35792480 100644
+--- a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BitmapClockView.kt
++++ b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BitmapClockView.kt
+@@ -58,18 +58,29 @@ constructor(
+             requestLayout()
+         }
+ 
++    /** BlueOS Moe on AOD in the neutral modes: no colour, mid tones 1.35 times lighter */
++    private val blueOSAodGrey by lazy {
++        ColorMatrixColorFilter(
++            ColorMatrix().apply {
++                setSaturation(0f)
++                postConcat(ColorMatrix().apply { setScale(1.35f, 1.35f, 1.35f, 1f) })
++            }
++        )
++    }
++
+     override var dozeFraction: Float = 0f
+         set(value) {
+             field = value
+             if (isBlueOSMoe) {
+-                // AOD: dim and grey, easier on the battery and the screen
+-                alpha = 1f - value * 0.55f
++                // AOD. Before 0.9 the pictures went to 45 % and grey whatever the settings said: the dark pixel art
++                // fell into the panel's lowest levels, where it looks reddish and can't be made out (the user,
++                // 2026-11-10; a screenshot shows plain dark grey). Now they follow the AOD settings of «Цвета» like
++                // the other clocks: as bright as «Яркость AOD», in their own colours with «Как на экране
++                // блокировки», otherwise grey — and the grey is lifted so the shapes stay readable.
++                val roles = org.blueos.arona.BlueOSColorRoles
++                alpha = 1f - value * (1f - roles.aodBrightness(context))
+                 colorFilter =
+-                    if (value > 0.5f) {
+-                        ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
+-                    } else {
+-                        null
+-                    }
++                    if (value > 0.5f && roles.aodMode(context) != roles.AOD_LOCK) blueOSAodGrey else null
+             } else {
+                 alpha = 1f - (value * 0.5f)
+             }

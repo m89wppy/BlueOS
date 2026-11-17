@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sat, 24 Oct 2026 20:35:16 +0200
-Subject: [PATCH 4/5] BlueOS: SetupWizard: BlueOS welcome before Google's
+Subject: [PATCH 4/6] BlueOS: SetupWizard: BlueOS welcome before Google's
 
 With GMS the wizard script starts at Google's welcome, so the BlueOS welcome screen was never shown. Use the empty oem_pre_setup step for it.
 

@@ -1,11 +1,33 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sat, 14 Nov 2026 09:54:14 +0700
-Subject: [PATCH] BlueOS: credit header in every BlueOS source file
+Subject: [PATCH 42/42] BlueOS: credit header in every BlueOS source file
 
+So that anyone reusing BlueOS code (or their tools) sees where it
+comes from and what the licence asks: keep NOTICE and credit BlueOS by GDmio.
+
+Change-Id: Ic4c5b3d8b90326db1a9c8953dd0cbcc976dec969
 ---
+ .../android/widget/BlueOSVisualizerView.java    | 17 +++++------------
+ .../systemui/shared/clocks/BlueOSMoeThemes.kt   |  6 +++++-
+ .../systemui/shared/clocks/view/BlueOSHalo.kt   |  6 +++++-
+ .../android/systemui/blueos/BlueOSDefaults.kt   | 17 +++++------------
+ .../systemui/blueos/lobby/BlueOSLobbyHost.kt    |  9 +++++++++
+ .../blueos/lockscreen/BlueOSCharacterSection.kt |  9 +++++++++
+ .../blueos/lockscreen/BlueOSLockProtection.kt   |  9 +++++++++
+ .../systemui/blueos/media/BlueOSMediaGlass.kt   |  9 +++++++++
+ .../blueos/wallpaper/BlueOSWallpaperWeather.kt  | 17 +++++------------
+ .../systemui/blueos/weather/BlueOSWeather.kt    |  9 +++++++++
+ .../widgets/BlueOSBatteryWidgetProvider.kt      | 17 +++++------------
+ .../blueos/widgets/BlueOSMediaWidgetProvider.kt | 17 +++++------------
+ .../widgets/BlueOSSummaryWidgetProvider.kt      | 17 +++++------------
+ .../widgets/BlueOSTogglesWidgetProvider.kt      | 17 +++++------------
+ .../blueos/widgets/BlueOSVisualizerService.kt   | 17 +++++------------
+ .../blueos/widgets/BlueOSWidgetStyle.kt         | 17 +++++------------
+ 16 files changed, 100 insertions(+), 110 deletions(-)
+
 diff --git a/core/java/android/widget/BlueOSVisualizerView.java b/core/java/android/widget/BlueOSVisualizerView.java
-index f2a6d9d..7fd5fb2 100644
+index d547d1c04f99..28008e20c62e 100644
 --- a/core/java/android/widget/BlueOSVisualizerView.java
 +++ b/core/java/android/widget/BlueOSVisualizerView.java
 @@ -1,17 +1,10 @@
@@ -32,41 +54,39 @@ index f2a6d9d..7fd5fb2 100644
  
  package android.widget;
 diff --git a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/BlueOSMoeThemes.kt b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/BlueOSMoeThemes.kt
-index 1aca813..64ef84f 100644
+index 1aca813b162a..46c5005a3a35 100644
 --- a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/BlueOSMoeThemes.kt
 +++ b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/BlueOSMoeThemes.kt
-@@ -1,3 +1,12 @@
-+/*
+@@ -1,6 +1,10 @@
+ /*
+- * SPDX-FileCopyrightText: BlueOS
 + * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
-+ * SPDX-License-Identifier: Apache-2.0
+  * SPDX-License-Identifier: Apache-2.0
 + *
 + * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
 + * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
-+ */
-+
- /*
-  * SPDX-FileCopyrightText: BlueOS
-  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+ package com.android.systemui.shared.clocks
 diff --git a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BlueOSHalo.kt b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BlueOSHalo.kt
-index 2535f1a..67a5b5a 100644
+index 2535f1a91466..7abad000d276 100644
 --- a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BlueOSHalo.kt
 +++ b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/view/BlueOSHalo.kt
-@@ -1,3 +1,12 @@
-+/*
+@@ -1,6 +1,10 @@
+ /*
+- * SPDX-FileCopyrightText: BlueOS
 + * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
-+ * SPDX-License-Identifier: Apache-2.0
+  * SPDX-License-Identifier: Apache-2.0
 + *
 + * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
 + * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
-+ */
-+
- /*
-  * SPDX-FileCopyrightText: BlueOS
-  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+ package com.android.systemui.shared.clocks.view
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/BlueOSDefaults.kt b/packages/SystemUI/src/com/android/systemui/blueos/BlueOSDefaults.kt
-index f4566e6..7ef8080 100644
+index f4566e68abfc..7ef8080c7fb8 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/BlueOSDefaults.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/BlueOSDefaults.kt
 @@ -1,17 +1,10 @@
@@ -92,8 +112,25 @@ index f4566e6..7ef8080 100644
   */
  
  package com.android.systemui.blueos
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+index a8c1bea3c160..35434240c73b 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+@@ -1,3 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
++ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ */
++
+ package com.android.systemui.blueos.lobby
+ 
+ import android.animation.Animator
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
-index a652063..41446d8 100644
+index 526028dc728f..ccbbc53c0ace 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
 @@ -1,3 +1,12 @@
@@ -110,7 +147,7 @@ index a652063..41446d8 100644
  
  import android.animation.ValueAnimator
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSLockProtection.kt b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSLockProtection.kt
-index f8dfb38..a1270d5 100644
+index f8dfb3898256..a1270d56c5d8 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSLockProtection.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSLockProtection.kt
 @@ -1,3 +1,12 @@
@@ -127,7 +164,7 @@ index f8dfb38..a1270d5 100644
  
  import android.app.WallpaperColors
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/media/BlueOSMediaGlass.kt b/packages/SystemUI/src/com/android/systemui/blueos/media/BlueOSMediaGlass.kt
-index 19c4f04..356db2a 100644
+index 19c4f042a41b..356db2a68c7e 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/media/BlueOSMediaGlass.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/media/BlueOSMediaGlass.kt
 @@ -1,3 +1,12 @@
@@ -144,7 +181,7 @@ index 19c4f04..356db2a 100644
  
  import android.content.Context
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
-index 331d560..9d8e971 100644
+index 7e541f22eace..cb066ecc72d0 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
 @@ -1,17 +1,10 @@
@@ -171,7 +208,7 @@ index 331d560..9d8e971 100644
  
  package com.android.systemui.blueos.wallpaper
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/weather/BlueOSWeather.kt b/packages/SystemUI/src/com/android/systemui/blueos/weather/BlueOSWeather.kt
-index 93bc9a4..93aaf06 100644
+index 93bc9a4495bc..93aaf06bcde3 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/weather/BlueOSWeather.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/weather/BlueOSWeather.kt
 @@ -1,3 +1,12 @@
@@ -188,7 +225,7 @@ index 93bc9a4..93aaf06 100644
  
  import android.Manifest
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSBatteryWidgetProvider.kt b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSBatteryWidgetProvider.kt
-index 42d2f97..d9f5cf6 100644
+index 42d2f974d5c3..d9f5cf651939 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSBatteryWidgetProvider.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSBatteryWidgetProvider.kt
 @@ -1,17 +1,10 @@
@@ -215,7 +252,7 @@ index 42d2f97..d9f5cf6 100644
  
  package com.android.systemui.blueos.widgets
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSMediaWidgetProvider.kt b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSMediaWidgetProvider.kt
-index 5aa40f4..5756968 100644
+index 5aa40f48c21f..57569682799b 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSMediaWidgetProvider.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSMediaWidgetProvider.kt
 @@ -1,17 +1,10 @@
@@ -242,7 +279,7 @@ index 5aa40f4..5756968 100644
  
  package com.android.systemui.blueos.widgets
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSSummaryWidgetProvider.kt b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSSummaryWidgetProvider.kt
-index d163688..fc01da1 100644
+index d1636889a799..fc01da182016 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSSummaryWidgetProvider.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSSummaryWidgetProvider.kt
 @@ -1,17 +1,10 @@
@@ -269,7 +306,7 @@ index d163688..fc01da1 100644
  
  package com.android.systemui.blueos.widgets
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSTogglesWidgetProvider.kt b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSTogglesWidgetProvider.kt
-index dcb832a..0b4cf54 100644
+index dcb832a42d72..0b4cf54709fd 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSTogglesWidgetProvider.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSTogglesWidgetProvider.kt
 @@ -1,17 +1,10 @@
@@ -296,7 +333,7 @@ index dcb832a..0b4cf54 100644
  
  package com.android.systemui.blueos.widgets
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSVisualizerService.kt b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSVisualizerService.kt
-index 7ee4061..62f476d 100644
+index 7ee4061980cd..62f476d7286a 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSVisualizerService.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSVisualizerService.kt
 @@ -1,17 +1,10 @@
@@ -323,7 +360,7 @@ index 7ee4061..62f476d 100644
  
  package com.android.systemui.blueos.widgets
 diff --git a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSWidgetStyle.kt b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSWidgetStyle.kt
-index 0f1864c..b4ac8d7 100644
+index 0f1864c7a207..b4ac8d737fb2 100644
 --- a/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSWidgetStyle.kt
 +++ b/packages/SystemUI/src/com/android/systemui/blueos/widgets/BlueOSWidgetStyle.kt
 @@ -1,17 +1,10 @@

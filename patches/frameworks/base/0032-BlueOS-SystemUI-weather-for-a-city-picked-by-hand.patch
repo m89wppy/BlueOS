@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Tue, 3 Nov 2026 22:56:27 +0100
-Subject: [PATCH 32/32] BlueOS: SystemUI: weather for a city picked by hand
+Subject: [PATCH 32/42] BlueOS: SystemUI: weather for a city picked by hand
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Change-Id: I44694fe70c8b7807c144f41f4a6238d2d19fd9e7

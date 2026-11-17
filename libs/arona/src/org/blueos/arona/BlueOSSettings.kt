@@ -127,6 +127,55 @@ object BlueOSSettings {
     const val WALL_EQ_LOCK_POS = "blueos_wall_eq_lock_pos"   // lock screen: 0 like home (the bottom), 1 a wave under the clock
     const val WALL_EQ_STR = "blueos_wall_eq_str"             // 20…100 %: how high and how bright
     const val HALO_BEAT = "blueos_halo_beat"                 // 1: the lock clock's halo pulses with the music
+    // 0.9: 1 = the wallpaper scrolls with the home screen pages (stock Android), 0 = it stays still (the launcher keeps
+    // its offset in the middle). «Желе на обоях» needs it still: the areas sit where they are on the screen
+    const val WALL_SCROLL = "blueos_wall_scroll"
+
+    // 0.9: 3D chibis on the home screen (the user's own .glb, «Файлы персонажа» → /data/misc/blueos/chibi)
+    const val CHIBI_ON = "blueos_chibi_on"                   // 1: they live on the home screen
+    const val CHIBI_WALK = "blueos_chibi_walk"               // 1: they walk and hop between the widgets' edges
+    const val CHIBI_SIT = "blueos_chibi_sit"                 // 1: they sit on a widget's top edge now and then
+    const val CHIBI_PAT = "blueos_chibi_pat"                 // 1: a finger moving over her head pats her
+    const val CHIBI_ACTS = "blueos_chibi_acts"               // 1: café activities (dessert table, keyboard, study)
+    const val CHIBI_SIZE = "blueos_chibi_size"               // 80…170 dp: how tall she is
+    const val CHIBI_LIGHT = "blueos_chibi_light"             // 0 like the game (flat colour, no highlights), 1 lit
+    const val CHIBI_FPS = "blueos_chibi_fps"                 // 15 / 30 / 60: frames while nobody touches her
+    const val CHIBI_SIT_DEPTH = "blueos_chibi_sit_depth"     // 0…60 %: how far she sinks when sitting on an edge
+    const val CHIBI_HIDDEN = "blueos_chibi_hidden"           // 0.9 test builds only (all models shown but these); unused
+    const val CHIBI_SHOWN = "blueos_chibi_shown"             // string: file names (without .glb) on the screen, ';'.
+                                                             // Unset: the first 3. At most BlueOSMedia.CHIBI_MAX.
+    const val CHIBI_SOUND = "blueos_chibi_sound"             // 0 silent, 1 sounds (emotions, hop/land), 2 + her voice
+    const val CHIBI_TALK = "blueos_chibi_talk"               // 1: now and then one of them says something by herself
+    const val CHIBI_STAY = "blueos_chibi_stay"               // 1: each lives on her own home screen page, 0: they follow
+    const val CHIBI_LANG = "blueos_chibi_lang"               // string: her words over her head: ru / en / ja / none
+    const val CHIBI_TOSS = "blueos_chibi_toss"               // 1: shaking the phone throws them around the screen
+    const val BUBBLE_FOLLOW = "blueos_bubble_follow"         // 1: Arona's chip and the chibis' words move with her;
+                                                             // 0: they stay where they appeared on the screen
+    // 0.9 «Лобби»: a swipe from the lock screen's left edge opens a memorial lobby (BlueOSLobby.kt;
+    // spec mockups/blueos-0.9-lobby.html). Files: «Файлы персонажа» → /data/misc/blueos/lobby/<name>/
+    const val LOBBY_ON = "blueos_lobby_on"                   // 1: the lobby screen is there
+    const val LOBBY = "blueos_lobby"                         // string: the lobby's folder name; unset = the first one
+    const val LOBBY_CLOCK = "blueos_lobby_clock"             // 0 nothing, 1 time, 2 time and date (small, top left)
+    const val LOBBY_FP = "blueos_lobby_fp"                   // 1: the fingerprint icon is shown over the lobby
+    const val LOBBY_AUTOHIDE = "blueos_lobby_autohide"       // 1: clock and icon hide 3 s after the last touch
+    const val LOBBY_ZOOM = "blueos_lobby_zoom"               // 100…180 %
+    const val LOBBY_PAN = "blueos_lobby_pan"                 // -100…100: which part of the scene is in the frame
+    const val LOBBY_TILT = "blueos_lobby_tilt"               // 1: tilting the phone shifts the frame (up to 12 %)
+    const val LOBBY_SOUND = "blueos_lobby_sound"             // 0 off, 1 her voice, 2 voice and music (ringer NORMAL only)
+    const val LOBBY_FPS = "blueos_lobby_fps"                 // 60 / 30
+    /** 0: the fingerprint sensor sleeps while the lobby is open (a touch there is hers); 1: it unlocks from the lobby */
+    const val LOBBY_FP_UNLOCK = "blueos_lobby_fp_unlock"
+    const val LOBBY_INTRO = "blueos_lobby_intro"             // her greeting (Start_Idle_01) when the lobby opens:
+                                                             // 0 every time, 1 only if not seen for an hour, 2 never
+    const val LOBBY_ORIENT = "blueos_lobby_orient"           // 0 landscape (turn the phone; the game's scenes are wide),
+                                                             // 1 as the phone is held, 2 portrait (a third of the scene)
+    const val LOBBY_AWAKE = "blueos_lobby_awake"             // the screen while the lobby is open: 0 goes off as usual,
+                                                             // 1 stays on while charging, 2 always stays on
+    @JvmField val LOBBY_KEYS = listOf(LOBBY_ON, LOBBY, LOBBY_CLOCK, LOBBY_FP, LOBBY_AUTOHIDE, LOBBY_ZOOM, LOBBY_PAN,
+        LOBBY_TILT, LOBBY_SOUND, LOBBY_FPS, LOBBY_INTRO, LOBBY_ORIENT, LOBBY_AWAKE, LOBBY_FP_UNLOCK)
+
+    @JvmField val CHIBI_KEYS = listOf(CHIBI_ON, CHIBI_WALK, CHIBI_SIT, CHIBI_PAT, CHIBI_ACTS, CHIBI_SIZE, CHIBI_LIGHT,
+        CHIBI_FPS, CHIBI_SIT_DEPTH, CHIBI_SHOWN, CHIBI_SOUND, CHIBI_TALK, CHIBI_STAY, CHIBI_LANG, CHIBI_TOSS, BUBBLE_FOLLOW)
 
     /** 0.8: the wallpaper blur of [key] in px (0 = none) — the same scale as «Размытие под виджетами». */
     @JvmStatic fun wallBlurPx(c: android.content.Context, key: String): Int =
@@ -183,11 +232,18 @@ object BlueOSSettings {
         HOME_INERTIA to 1, HOME_TILT to 1, TILT_GLARE to 1, TILT_HALO to 1, TILT_ARONA to 1,
         // live weather on the wallpaper: off on a fresh phone (the user, 2026-10-30: still too heavy for a default)
         ARONA_WIDGET_TEXT to 0, ARONA_WIDGET_PHRASES to 1, WALL_WEATHER to 0 /* 1 */, WALL_WEATHER_STR to 70 /* 80 */,
-        WALL_EQ to 3 /* 0 */, WALL_EQ_STYLE to 2 /* 0 */, WALL_EQ_LOCK_POS to 0, WALL_EQ_STR to 60, HALO_BEAT to 1 /* 0 */,
+        WALL_EQ to 3 /* 0 */, WALL_EQ_STYLE to 2 /* 0 */, WALL_EQ_LOCK_POS to 0, WALL_EQ_STR to 60, HALO_BEAT to 1 /* 0 */, WALL_SCROLL to 0 /* 1 */,
         EQ_PLAYER_SKIP to 1 /* 0 */, EQ_PLAYER_STYLE to 0, HOME_WALL_BLUR to 28 /* 0 */,
         LOCK_CLOCK_SIZE to 100, COLOR_PROTECT to 0, COLOR_PROTECT_STR to 100, COLOR_LOCK_DIGITS to 3 /* 1 */, COLOR_LOCK_MINUTES to 2, COLOR_LOCK_HALO to 2, COLOR_LOCK_SENSEI to 2, COLOR_LOCK_TEXT to 0,
         COLOR_LOCK_WEATHER to 2 /* 0 */, COLOR_GLOW to 2, COLOR_AOD to 0, COLOR_AOD_BRIGHT to 80, COLOR_AOD_ARONA to 1 /* 0 */,
         COLOR_HOME_ACCENT to 2, COLOR_ICONS to 2, COLOR_LABELS to 0, COLOR_EQ to 0, COLOR_CUSTOM to 0xFF128AFA.toInt(),
+        // 0.9 chibis (the mockup's defaults: blueos-0.9-chibi.html)
+        CHIBI_ON to 1, CHIBI_WALK to 1, CHIBI_SIT to 1, CHIBI_PAT to 1, CHIBI_ACTS to 1, CHIBI_SIZE to 120,
+        CHIBI_LIGHT to 0, CHIBI_FPS to 30, CHIBI_SIT_DEPTH to 30, CHIBI_SOUND to 2, CHIBI_TALK to 1, CHIBI_STAY to 1, CHIBI_TOSS to 1, BUBBLE_FOLLOW to 1,
+        // 0.9 «Лобби» (the mockup's defaults: blueos-0.9-lobby.html)
+        LOBBY_ON to 1, LOBBY_CLOCK to 0, LOBBY_FP to 0, LOBBY_AUTOHIDE to 0, LOBBY_ZOOM to 100, LOBBY_PAN to 0,
+        LOBBY_TILT to 1, LOBBY_SOUND to 1, LOBBY_FPS to 60, LOBBY_INTRO to 1, LOBBY_ORIENT to 0, LOBBY_FP_UNLOCK to 0,
+        LOBBY_AWAKE to 0,
     )
 
     /** 0.8: [DEFAULTS] that a fresh phone gets written into Settings (BlueOSDefaults): every key in the table. */

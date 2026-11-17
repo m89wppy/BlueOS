@@ -1,0 +1,813 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 22:47:31 +0700
+Subject: [PATCH 21/23] =?UTF-8?q?BlueOS:=20=C2=AB=D0=96=D0=B5=D0=BB=D0=B5?=
+ =?UTF-8?q?=20=D0=BD=D0=B0=20=D0=BE=D0=B1=D0=BE=D1=8F=D1=85=C2=BB=20settin?=
+ =?UTF-8?q?gs=20page=20with=20area=20editor,=20lobby=20fingerprint=20choic?=
+ =?UTF-8?q?e?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I65a986c7f01e09e9dc0de219265c7eebc888e194
+---
+ res/values-ru/blueos_09_strings.xml           |  49 +++
+ res/values/blueos_09_strings.xml              |  49 +++
+ .../blueos/BlueOSJellyEditorView.kt           | 357 ++++++++++++++++++
+ .../blueos/BlueOSSettingsActivity.kt          | 216 ++++++++++-
+ .../ThemePickerCustomizationOptionViewUtil.kt |   2 +
+ 5 files changed, 670 insertions(+), 3 deletions(-)
+ create mode 100644 src/com/android/customization/blueos/BlueOSJellyEditorView.kt
+
+diff --git a/res/values-ru/blueos_09_strings.xml b/res/values-ru/blueos_09_strings.xml
+index f2dcac01..ef4051ac 100644
+--- a/res/values-ru/blueos_09_strings.xml
++++ b/res/values-ru/blueos_09_strings.xml
+@@ -78,6 +78,9 @@
+     <string name="blueos_s_lobby_clock_date">Время и дата</string>
+     <string name="blueos_s_lobby_fp">Значок отпечатка</string>
+     <string name="blueos_s_lobby_fp_d">Датчик работает и без значка: палец можно приложить в любой момент</string>
++    <string name="blueos_s_lobby_fp_unlock">Отпечаток в лобби</string>
++    <string name="blueos_s_lobby_fp_unlock_off">Только на экране блокировки — в лобби место датчика просто касание персонажа</string>
++    <string name="blueos_s_lobby_fp_unlock_on">Разблокирует и из лобби</string>
+     <string name="blueos_s_lobby_autohide">Прятать, пока не трогаю</string>
+     <string name="blueos_s_lobby_autohide_d">Часы и значок исчезают через 3 секунды и возвращаются при касании</string>
+     <string name="blueos_s_h_lobby_frame">Кадр</string>
+@@ -110,4 +113,50 @@
+     <string name="blueos_s_lobby_fps">Плавность</string>
+     <string name="blueos_s_lobby_fps_60">Плавно — больше расход батареи</string>
+     <string name="blueos_s_lobby_fps_30">Обычно</string>
++    <!-- 0.9 «Желе на обоях» -->
++    <string name="blueos_s_entry_jelly">Желе на обоях</string>
++    <string name="blueos_s_entry_jelly_desc">Части обоев пружинят как желе, когда двигаешь телефон или касаешься их</string>
++    <string name="blueos_s_page_jelly">Желе на обоях</string>
++    <string name="blueos_s_jelly_on">Желе на обоях</string>
++    <string name="blueos_s_jelly_on_d">Отмеченные части обоев пружинят, когда двигаешь телефон или касаешься их</string>
++    <string name="blueos_s_h_jelly_where">Где</string>
++    <string name="blueos_s_jelly_lock">Экран блокировки</string>
++    <string name="blueos_s_jelly_home">Рабочий стол</string>
++    <string name="blueos_s_jelly_home_d">Касание — между значками и виджетами</string>
++    <string name="blueos_s_h_jelly_areas">Области</string>
++    <string name="blueos_s_jelly_pic">Обои</string>
++    <string name="blueos_s_jelly_pic_lock">Картинка экрана блокировки</string>
++    <string name="blueos_s_jelly_pic_home">Картинка рабочего стола</string>
++    <string name="blueos_s_jelly_live">Работает только с картинкой на обоях</string>
++    <string name="blueos_s_jelly_add">Добавить</string>
++    <string name="blueos_s_jelly_edit">Редактировать на обоях</string>
++    <string name="blueos_s_jelly_edit_d">Двигай область пальцем, уголок — размер, точка сверху — поворот</string>
++    <string name="blueos_s_h_jelly_area">Область</string>
++    <string name="blueos_s_jelly_shape">Форма</string>
++    <string name="blueos_s_jelly_circle">Круг</string>
++    <string name="blueos_s_jelly_oval">Овал</string>
++    <string name="blueos_s_jelly_rect">Прямоугольник</string>
++    <string name="blueos_s_jelly_free">Своя</string>
++    <string name="blueos_s_jelly_free_draw">Обведи пальцем на обоях выше то, что должно дрожать</string>
++    <string name="blueos_s_jelly_free_again">Обведено. Обвести заново — выбери «Своя» ещё раз</string>
++    <string name="blueos_s_jelly_strength">Сила</string>
++    <string name="blueos_s_jelly_strength_lo">Чуть заметно</string>
++    <string name="blueos_s_jelly_strength_mid">Средне</string>
++    <string name="blueos_s_jelly_strength_hi">Сильно</string>
++    <string name="blueos_s_jelly_spring">Упругость</string>
++    <string name="blueos_s_jelly_spring_lo">Долго колышется</string>
++    <string name="blueos_s_jelly_spring_mid">Средне</string>
++    <string name="blueos_s_jelly_spring_hi">Быстро успокаивается</string>
++    <string name="blueos_s_jelly_soft">Мягкость края</string>
++    <string name="blueos_s_jelly_soft_lo">Чёткий край</string>
++    <string name="blueos_s_jelly_soft_mid">Средне</string>
++    <string name="blueos_s_jelly_soft_hi">Плавный</string>
++    <string name="blueos_s_jelly_motion">От движения телефона</string>
++    <string name="blueos_s_jelly_motion_d">Наклоны и встряхивания</string>
++    <string name="blueos_s_jelly_touch">От касания</string>
++    <string name="blueos_s_jelly_touch_d">Потяни — тянется за пальцем</string>
++    <string name="blueos_s_jelly_delete">Удалить область</string>
++    <string name="blueos_s_h_jelly_more">Ещё</string>
++    <string name="blueos_s_jelly_info">Батарея</string>
++    <string name="blueos_s_jelly_info_d">Обои перерисовываются, только пока что-то дрожит. На экране «Всегда включён» не работает. Новые обои начинаются без областей: они привязаны к картинке</string>
+ </resources>
+diff --git a/res/values/blueos_09_strings.xml b/res/values/blueos_09_strings.xml
+index a6b829ac..b741d069 100644
+--- a/res/values/blueos_09_strings.xml
++++ b/res/values/blueos_09_strings.xml
+@@ -79,6 +79,9 @@
+     <string name="blueos_s_lobby_clock_date">Time and date</string>
+     <string name="blueos_s_lobby_fp">Fingerprint icon</string>
+     <string name="blueos_s_lobby_fp_d">The sensor works without the icon too: you can put your finger on it at any moment</string>
++    <string name="blueos_s_lobby_fp_unlock">Fingerprint in the lobby</string>
++    <string name="blueos_s_lobby_fp_unlock_off">Only on the lock screen — in the lobby the sensor\'s spot is just a touch on her</string>
++    <string name="blueos_s_lobby_fp_unlock_on">Unlocks from the lobby too</string>
+     <string name="blueos_s_lobby_autohide">Hide while I don\'t touch</string>
+     <string name="blueos_s_lobby_autohide_d">The clock and the icon disappear after 3 seconds and come back when you touch the screen</string>
+     <string name="blueos_s_h_lobby_frame">Frame</string>
+@@ -111,4 +114,50 @@
+     <string name="blueos_s_lobby_fps">Smoothness</string>
+     <string name="blueos_s_lobby_fps_60">Smooth — uses more battery</string>
+     <string name="blueos_s_lobby_fps_30">Normal</string>
++    <!-- 0.9 «Желе на обоях» -->
++    <string name="blueos_s_entry_jelly">Jelly wallpaper</string>
++    <string name="blueos_s_entry_jelly_desc">Parts of the wallpaper that spring like jelly when you move the phone or touch them</string>
++    <string name="blueos_s_page_jelly">Jelly wallpaper</string>
++    <string name="blueos_s_jelly_on">Jelly wallpaper</string>
++    <string name="blueos_s_jelly_on_d">The marked parts of the wallpaper spring when you move the phone or touch them</string>
++    <string name="blueos_s_h_jelly_where">Where</string>
++    <string name="blueos_s_jelly_lock">Lock screen</string>
++    <string name="blueos_s_jelly_home">Home screen</string>
++    <string name="blueos_s_jelly_home_d">A touch works between the icons and widgets</string>
++    <string name="blueos_s_h_jelly_areas">Areas</string>
++    <string name="blueos_s_jelly_pic">Wallpaper</string>
++    <string name="blueos_s_jelly_pic_lock">Lock screen picture</string>
++    <string name="blueos_s_jelly_pic_home">Home screen picture</string>
++    <string name="blueos_s_jelly_live">Works only with a picture as the wallpaper</string>
++    <string name="blueos_s_jelly_add">Add</string>
++    <string name="blueos_s_jelly_edit">Edit on the wallpaper</string>
++    <string name="blueos_s_jelly_edit_d">Drag an area with your finger, the corner changes its size, the dot above turns it</string>
++    <string name="blueos_s_h_jelly_area">Area</string>
++    <string name="blueos_s_jelly_shape">Shape</string>
++    <string name="blueos_s_jelly_circle">Circle</string>
++    <string name="blueos_s_jelly_oval">Oval</string>
++    <string name="blueos_s_jelly_rect">Rectangle</string>
++    <string name="blueos_s_jelly_free">Your own</string>
++    <string name="blueos_s_jelly_free_draw">Draw around the part you want on the wallpaper above with your finger</string>
++    <string name="blueos_s_jelly_free_again">Drawn. To draw again, pick «Your own» once more</string>
++    <string name="blueos_s_jelly_strength">Strength</string>
++    <string name="blueos_s_jelly_strength_lo">Barely noticeable</string>
++    <string name="blueos_s_jelly_strength_mid">Medium</string>
++    <string name="blueos_s_jelly_strength_hi">Strong</string>
++    <string name="blueos_s_jelly_spring">Springiness</string>
++    <string name="blueos_s_jelly_spring_lo">Wobbles for a long time</string>
++    <string name="blueos_s_jelly_spring_mid">Medium</string>
++    <string name="blueos_s_jelly_spring_hi">Calms down quickly</string>
++    <string name="blueos_s_jelly_soft">Soft edge</string>
++    <string name="blueos_s_jelly_soft_lo">Sharp edge</string>
++    <string name="blueos_s_jelly_soft_mid">Medium</string>
++    <string name="blueos_s_jelly_soft_hi">Smooth</string>
++    <string name="blueos_s_jelly_motion">When the phone moves</string>
++    <string name="blueos_s_jelly_motion_d">Tilting and shaking</string>
++    <string name="blueos_s_jelly_touch">When touched</string>
++    <string name="blueos_s_jelly_touch_d">Pull it and it follows the finger</string>
++    <string name="blueos_s_jelly_delete">Delete this area</string>
++    <string name="blueos_s_h_jelly_more">More</string>
++    <string name="blueos_s_jelly_info">Battery</string>
++    <string name="blueos_s_jelly_info_d">The wallpaper is redrawn only while something wobbles. It doesn\'t work on the always-on display. A new wallpaper starts without areas: they belong to the picture</string>
+ </resources>
+diff --git a/src/com/android/customization/blueos/BlueOSJellyEditorView.kt b/src/com/android/customization/blueos/BlueOSJellyEditorView.kt
+new file mode 100644
+index 00000000..836c30c1
+--- /dev/null
++++ b/src/com/android/customization/blueos/BlueOSJellyEditorView.kt
+@@ -0,0 +1,357 @@
++/*
++ * Copyright (C) 2026 BlueOS
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.customization.blueos
++
++import android.app.WallpaperManager
++import android.content.Context
++import android.graphics.Bitmap
++import android.graphics.Canvas
++import android.graphics.Color
++import android.graphics.DashPathEffect
++import android.graphics.Matrix
++import android.graphics.Paint
++import android.graphics.Path
++import android.graphics.Rect
++import android.graphics.RectF
++import android.hardware.Sensor
++import android.hardware.SensorEvent
++import android.hardware.SensorEventListener
++import android.hardware.SensorManager
++import android.os.Handler
++import android.os.Looper
++import android.view.Choreographer
++import android.view.MotionEvent
++import android.view.View
++import kotlin.math.atan2
++import kotlin.math.cos
++import kotlin.math.hypot
++import kotlin.math.max
++import kotlin.math.min
++import kotlin.math.sin
++import org.blueos.arona.BlueOSJelly
++
++/**
++ * BlueOS 0.9 «Желе на обоях»: the wallpaper with its areas (approved mockup mockups/blueos-0.9-wiggle.html). Play
++ * mode: it wiggles exactly like the wallpaper will (the same [BlueOSJelly] springs and shader), shake the phone or
++ * pull an area. Edit mode: drag an area, its corner handle = size, the dot above = turn; «Своя» form = draw around
++ * something with the finger. [areas] are the page's list (normalised to the picture); [changed] saves them.
++ */
++class BlueOSJellyEditorView(context: Context) : View(context), Choreographer.FrameCallback {
++    var areas: MutableList<BlueOSJelly.Area> = mutableListOf()
++        set(v) { field = v; rebuild() }
++    var selected = 0
++        set(v) { field = v; invalidate() }
++    var edit = false
++        set(v) { field = v; sim?.still(); invalidate() }
++    var accent = Color.rgb(18, 138, 250)
++    /** after an area moved / changed size or form in the editor */
++    var changed: () -> Unit = {}
++    /** a tap selected another area */
++    var onSelect: (Int) -> Unit = {}
++
++    private val dp = resources.displayMetrics.density
++    private var pic: Bitmap? = null
++    private var message: String? = null
++    private var sim: BlueOSJelly.Sim? = null
++    private val renderer by lazy { BlueOSJelly.Renderer() }
++    private val dst = Rect()
++    private val toView = Matrix()
++    private val toPic = Matrix()
++    private val picPaint = Paint(Paint.FILTER_BITMAP_FLAG)
++    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++        style = Paint.Style.STROKE; strokeWidth = 2.5f * dp; pathEffect = DashPathEffect(floatArrayOf(9 * dp, 6 * dp), 0f)
++    }
++    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
++    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; textSize = 18 * dp; color = Color.WHITE }
++    private val main = Handler(Looper.getMainLooper())
++
++    /** Loads the picture of [which] (FLAG_SYSTEM / FLAG_LOCK) as the wallpaper itself shows it, a copy ≤ 1080 px wide. */
++    fun load(which: Int, liveText: String) {
++        val wm = WallpaperManager.getInstance(context)
++        Thread({
++            val b = try {
++                if (wm.getWallpaperInfo(which) != null) null else wm.getBitmap(false, which)
++            } catch (e: Exception) { null }
++            val small = b?.let {
++                val k = min(1f, 1080f / it.width)
++                if (k < 1f) Bitmap.createScaledBitmap(it, (it.width * k).toInt(), (it.height * k).toInt(), true) else it
++            }
++            main.post {
++                pic = small
++                message = if (small == null) liveText else null
++                requestLayout()
++                rebuild()
++            }
++        }, "BlueOSJellyPic").start()
++    }
++
++    /** The springs and masks for the areas now (after every change). */
++    fun rebuild() {
++        val p = pic
++        if (p == null || areas.isEmpty()) { sim = null; renderer.setMasks(null); invalidate(); return }
++        renderer.setMasks(BlueOSJelly.masks(areas, p.width, p.height))
++        sim = BlueOSJelly.Sim(areas, p.width.toFloat(), p.height.toFloat())
++        invalidate()
++    }
++
++    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
++        val w = MeasureSpec.getSize(widthMeasureSpec)
++        val p = pic
++        val screenH = resources.displayMetrics.heightPixels
++        val h = if (p == null) (w * .6f).toInt() else min((w * p.height / p.width.toFloat()).toInt(), (screenH * .62f).toInt())
++        setMeasuredDimension(w, h)
++    }
++
++    override fun onDraw(canvas: Canvas) {
++        val p = pic
++        if (p == null) {
++            message?.let {
++                text.color = Color.GRAY
++                canvas.drawText(it, width / 2f, height / 2f, text)
++            }
++            return
++        }
++        // the picture fitted into the view, centred
++        val k = min(width / p.width.toFloat(), height / p.height.toFloat())
++        val w = (p.width * k).toInt()
++        val h = (p.height * k).toInt()
++        dst.set((width - w) / 2, (height - h) / 2, (width + w) / 2, (height + h) / 2)
++        toView.setRectToRect(RectF(0f, 0f, p.width.toFloat(), p.height.toFloat()), RectF(dst), Matrix.ScaleToFit.FILL)
++        toView.invert(toPic)
++        canvas.drawBitmap(p, null, dst, picPaint)
++        val s = sim
++        if (s != null && s.moving && !edit) renderer.draw(canvas, p, dst, s)
++        if (!edit) return
++        areas.forEachIndexed { i, a ->
++            val path = BlueOSJelly.path(a, p.width.toFloat(), p.height.toFloat())
++            path.transform(toView)
++            val sel = i == selected
++            fill.color = Color.argb(36, Color.red(accent), Color.green(accent), Color.blue(accent))
++            fill.style = Paint.Style.FILL
++            canvas.drawPath(path, fill)
++            line.color = if (sel) accent else Color.argb(220, 255, 255, 255)
++            canvas.drawPath(path, line)
++            val c = mapped(BlueOSJelly.centre(a, p.width.toFloat(), p.height.toFloat()))
++            text.color = Color.WHITE
++            canvas.drawText("${i + 1}", c[0], c[1] + 6 * dp, text)
++            if (sel && a.shape != BlueOSJelly.FREE) {
++                val (hx, hy) = handle(a, SIZE)
++                knob(canvas, hx, hy, accent, Color.WHITE)
++                if (a.shape != BlueOSJelly.CIRCLE) {
++                    val (rx, ry) = handle(a, TURN)
++                    knob(canvas, rx, ry, Color.WHITE, accent)
++                }
++            }
++        }
++        if (lasso.size >= 4) {
++            val path = Path().apply {
++                moveTo(lasso[0], lasso[1]); var i = 2; while (i + 1 < lasso.size) { lineTo(lasso[i], lasso[i + 1]); i += 2 }
++            }
++            line.color = accent
++            canvas.drawPath(path, line)
++        }
++    }
++
++    private fun knob(c: Canvas, x: Float, y: Float, inner: Int, ring: Int) {
++        fill.style = Paint.Style.FILL
++        fill.color = ring
++        c.drawCircle(x, y, 13 * dp, fill)
++        fill.color = inner
++        c.drawCircle(x, y, 10 * dp, fill)
++    }
++
++    private fun mapped(xy: FloatArray): FloatArray = floatArrayOf(xy[0], xy[1]).also { toView.mapPoints(it) }
++
++    /** A handle of the area in view px: the corner ([SIZE]) or the dot above ([TURN]). */
++    private fun handle(a: BlueOSJelly.Area, which: Int): Pair<Float, Float> {
++        val p = pic ?: return 0f to 0f
++        val w = p.width.toFloat()
++        val rx = a.rx * w
++        val ry = (if (a.shape == BlueOSJelly.CIRCLE) a.rx else a.ry) * w
++        val lx: Float
++        val ly: Float
++        if (which == SIZE) { lx = rx; ly = ry } else { lx = 0f; ly = -ry - 28 * dp / scale() }
++        val c = cos(a.rot); val s = sin(a.rot)
++        val pt = floatArrayOf(a.x * w + lx * c - ly * s, a.y * p.height + lx * s + ly * c)
++        toView.mapPoints(pt)
++        return pt[0] to pt[1]
++    }
++
++    private fun scale() = toView.mapRadius(1f).coerceAtLeast(.0001f)
++
++    // ------------------------------------------------------------------ touches
++
++    private var drag = NONE
++    private var dragArea: BlueOSJelly.Area? = null
++    private var downX = 0f
++    private var downY = 0f
++    private val lasso = ArrayList<Float>()
++
++    override fun onTouchEvent(e: MotionEvent): Boolean {
++        val p = pic ?: return false
++        parent?.requestDisallowInterceptTouchEvent(true)
++        val pt = floatArrayOf(e.x, e.y).also { toPic.mapPoints(it) }
++        val px = pt[0]
++        val py = pt[1]
++        if (!edit) {
++            val s = sim ?: return true
++            when (e.actionMasked) {
++                MotionEvent.ACTION_DOWN -> if (s.down(px, py)) start()
++                MotionEvent.ACTION_MOVE -> s.move(px, py)
++                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { s.up(); parent?.requestDisallowInterceptTouchEvent(false) }
++            }
++            return true
++        }
++        val w = p.width.toFloat()
++        val h = p.height.toFloat()
++        when (e.actionMasked) {
++            MotionEvent.ACTION_DOWN -> {
++                downX = px; downY = py
++                drag = NONE
++                val a = areas.getOrNull(selected)
++                if (a != null && a.shape == BlueOSJelly.FREE && a.pts == null) {
++                    drag = LASSO; lasso.clear(); lasso += e.x; lasso += e.y
++                    return true
++                }
++                if (a != null && a.shape != BlueOSJelly.FREE) {
++                    val (sx, sy) = handle(a, SIZE)
++                    val (tx, ty) = handle(a, TURN)
++                    if (hypot(e.x - sx, e.y - sy) < 26 * dp) drag = SIZE
++                    else if (a.shape != BlueOSJelly.CIRCLE && hypot(e.x - tx, e.y - ty) < 26 * dp) drag = TURN
++                }
++                if (drag == NONE) {
++                    // the topmost area under the finger: select it and move it
++                    for (i in areas.indices.reversed()) {
++                        val path = BlueOSJelly.path(areas[i], w, h)
++                        val r = android.graphics.Region().apply {
++                            setPath(path, android.graphics.Region(0, 0, w.toInt(), h.toInt()))
++                        }
++                        if (r.contains(px.toInt(), py.toInt())) {
++                            if (i != selected) { selected = i; onSelect(i) }
++                            drag = MOVE
++                            break
++                        }
++                    }
++                }
++                dragArea = areas.getOrNull(selected)?.copy()
++            }
++            MotionEvent.ACTION_MOVE -> {
++                val a = areas.getOrNull(selected) ?: return true
++                val a0 = dragArea ?: return true
++                when (drag) {
++                    LASSO -> { lasso += e.x; lasso += e.y }
++                    MOVE -> {
++                        val dx = (px - downX) / w
++                        val dy = (py - downY) / h
++                        val pts = a0.pts
++                        if (pts != null) a.pts = FloatArray(pts.size) { i -> pts[i] + if (i % 2 == 0) dx else dy }
++                        else { a.x = (a0.x + dx).coerceIn(0f, 1f); a.y = (a0.y + dy).coerceIn(0f, 1f) }
++                    }
++                    SIZE -> {
++                        val ddx = px - a.x * w
++                        val ddy = py - a.y * h
++                        val c = cos(-a.rot); val s = sin(-a.rot)
++                        val lx = kotlin.math.abs(ddx * c - ddy * s)
++                        val ly = kotlin.math.abs(ddx * s + ddy * c)
++                        val minR = 24 * dp / scale()
++                        if (a.shape == BlueOSJelly.CIRCLE) a.rx = max(max(lx, ly), minR) / w
++                        else { a.rx = max(lx, minR) / w; a.ry = max(ly, minR) / w }
++                    }
++                    TURN -> a.rot = atan2(px - a.x * w, -(py - a.y * h))
++                }
++                invalidate()
++            }
++            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
++                parent?.requestDisallowInterceptTouchEvent(false)
++                if (drag == LASSO) {
++                    val a = areas.getOrNull(selected)
++                    if (a != null && lasso.size >= 16) {
++                        val pts = FloatArray(lasso.size)
++                        var i = 0
++                        while (i + 1 < lasso.size) {
++                            val q = floatArrayOf(lasso[i], lasso[i + 1]).also { toPic.mapPoints(it) }
++                            pts[i] = (q[0] / w).coerceIn(0f, 1f); pts[i + 1] = (q[1] / h).coerceIn(0f, 1f)
++                            i += 2
++                        }
++                        a.pts = pts
++                    }
++                    lasso.clear()
++                }
++                if (drag != NONE) { rebuild(); changed() }
++                drag = NONE
++            }
++        }
++        return true
++    }
++
++    // ------------------------------------------------------------------ the phone's movement, frames
++
++    private var ax = 0f
++    private var ay = 0f
++    private var running = false
++    private var last = 0L
++    private val sensors = context.getSystemService(SensorManager::class.java)
++    private val accel = object : SensorEventListener {
++        override fun onSensorChanged(e: SensorEvent) {
++            var x = e.values[0]
++            var y = -e.values[1]
++            if (hypot(x, y) < BlueOSJelly.DEADZONE) { x = 0f; y = 0f }
++            ax = x; ay = y
++            if ((x != 0f || y != 0f) && !edit) start()
++        }
++        override fun onAccuracyChanged(s: Sensor?, a: Int) {}
++    }
++
++    override fun onAttachedToWindow() {
++        super.onAttachedToWindow()
++        sensors?.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)?.let {
++            sensors.registerListener(accel, it, SensorManager.SENSOR_DELAY_GAME)
++        }
++    }
++
++    override fun onDetachedFromWindow() {
++        sensors?.unregisterListener(accel)
++        Choreographer.getInstance().removeFrameCallback(this)
++        running = false
++        super.onDetachedFromWindow()
++    }
++
++    private fun start() {
++        if (running) return
++        running = true
++        last = 0L
++        Choreographer.getInstance().postFrameCallback(this)
++    }
++
++    override fun doFrame(frameTimeNanos: Long) {
++        val s = sim
++        if (s == null || edit) { running = false; invalidate(); return }
++        val dt = if (last == 0L) .016f else ((frameTimeNanos - last) / 1e9f).coerceIn(.001f, .05f)
++        last = frameTimeNanos
++        val more = s.step(dt, ax, ay)
++        invalidate()
++        if (more || ax != 0f || ay != 0f) Choreographer.getInstance().postFrameCallback(this) else running = false
++    }
++
++    private companion object {
++        const val NONE = 0
++        const val MOVE = 1
++        const val SIZE = 2
++        const val TURN = 3
++        const val LASSO = 4
++    }
++}
+diff --git a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+index 40d10c1f..33836dad 100644
+--- a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
++++ b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+@@ -30,6 +30,7 @@ enum class BlueOSCustomizationOption(val page: String, val title: Int, val desc:
+     WEATHER(BlueOSSettingsActivity.WEATHER, R.string.blueos_s_entry_weather, R.string.blueos_s_entry_weather_desc),
+     CHIBI(BlueOSSettingsActivity.CHIBI, R.string.blueos_s_entry_chibi, R.string.blueos_s_entry_chibi_desc),
+     LOBBY(BlueOSSettingsActivity.LOBBY, R.string.blueos_s_entry_lobby, R.string.blueos_s_entry_lobby_desc),
++    JELLY(BlueOSSettingsActivity.JELLY, R.string.blueos_s_entry_jelly, R.string.blueos_s_entry_jelly_desc),
+     COLORS(BlueOSSettingsActivity.COLORS, R.string.blueos_s_entry_colors, R.string.blueos_s_entry_colors_desc);
+ 
+     /** A list entry styled like the stock ones ("More lock screen settings" layout). */
+@@ -61,6 +62,7 @@ class BlueOSSettingsActivity : Activity() {
+         const val COLORS = "colors"
+         const val CHIBI = "chibi"
+         const val LOBBY = "lobby"
++        const val JELLY = "jelly"
+ 
+         fun open(context: Context, page: String) =
+             context.startActivity(Intent(context, BlueOSSettingsActivity::class.java).putExtra(EXTRA_PAGE, page))
+@@ -93,6 +95,15 @@ class BlueOSSettingsActivity : Activity() {
+         class Info(val title: Int, val desc: Int) : Item()
+         /** 0.8.1: a row with a text value that isn't a list of options */
+         class Value(val title: Int, val value: () -> String, val onClick: () -> Unit) : Item()
++        // 0.9 «Желе на обоях»: rows bound to values that aren't one Secure key each (the areas' JSON)
++        class SwFn(val title: Int, val desc: Int?, val get: () -> Boolean, val set: (Boolean) -> Unit,
++                   override val dep: () -> Boolean = { true }) : Item()
++        class SliderFn(val title: Int, val get: () -> Int, val set: (Int) -> Unit, val desc: (Int) -> String,
++                       override val dep: () -> Boolean = { true }) : Item()
++        class ChoiceFn(val title: Int, val options: List<Pair<Int, Int>>, val get: () -> Int, val set: (Int) -> Unit,
++                       override val dep: () -> Boolean = { true }) : Item()
++        /** Any view in a row card (the jelly's editor, its areas' chips). */
++        class Custom(val make: () -> View, val onUpdate: () -> Unit = {}) : Item()
+     }
+ 
+     private val rows = mutableListOf<Pair<Item, () -> Unit>>()
+@@ -390,7 +401,10 @@ class BlueOSSettingsActivity : Activity() {
+             Item.Choice(K.LOBBY_CLOCK, R.string.blueos_s_lobby_clock, listOf(
+                 R.string.blueos_s_lobby_clock_none to 0, R.string.blueos_s_lobby_clock_time to 1,
+                 R.string.blueos_s_lobby_clock_date to 2), dep = shown),
+-            Item.Sw(K.LOBBY_FP, R.string.blueos_s_lobby_fp, R.string.blueos_s_lobby_fp_d, dep = shown),
++            Item.Choice(K.LOBBY_FP_UNLOCK, R.string.blueos_s_lobby_fp_unlock, listOf(
++                R.string.blueos_s_lobby_fp_unlock_off to 0, R.string.blueos_s_lobby_fp_unlock_on to 1), dep = shown),
++            Item.Sw(K.LOBBY_FP, R.string.blueos_s_lobby_fp, R.string.blueos_s_lobby_fp_d,
++                dep = { shown() && on(K.LOBBY_FP_UNLOCK) }),
+             Item.Sw(K.LOBBY_AUTOHIDE, R.string.blueos_s_lobby_autohide, R.string.blueos_s_lobby_autohide_d, dep = shown),
+             Item.Header(R.string.blueos_s_h_lobby_frame),
+             Item.Choice(K.LOBBY_ORIENT, R.string.blueos_s_lobby_orient, listOf(
+@@ -416,6 +430,146 @@ class BlueOSSettingsActivity : Activity() {
+         )
+     }
+ 
++    // ------------------------------------------------------------------ 0.9 «Желе на обоях»
++
++    private var jelly = org.blueos.arona.BlueOSJelly.Config()
++    private var jellyWhich = android.app.WallpaperManager.FLAG_SYSTEM
++    private var jellyArea = 0
++    private var jellyEditor: BlueOSJellyEditorView? = null
++    private var jellyEditing = false
++
++    /** Two pictures (a lock screen one of its own): which one the areas are for. */
++    private fun jellyTwo(): Boolean {
++        val wm = android.app.WallpaperManager.getInstance(this)
++        val lockId = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK)
++        return lockId >= 0 && lockId != wm.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM)
++    }
++
++    private fun jellyKey(): String {
++        val wm = android.app.WallpaperManager.getInstance(this)
++        return org.blueos.arona.BlueOSJelly.picKey(jellyWhich, wm.getWallpaperId(jellyWhich))
++    }
++
++    private fun jellyAreas(): MutableList<org.blueos.arona.BlueOSJelly.Area> = jelly.pics.getOrPut(jellyKey()) { mutableListOf() }
++
++    private fun jellySave() {
++        // areas of pictures no longer set go: only the current ones are kept
++        val wm = android.app.WallpaperManager.getInstance(this)
++        val keep = setOf(
++            org.blueos.arona.BlueOSJelly.picKey(android.app.WallpaperManager.FLAG_SYSTEM, wm.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM)),
++            org.blueos.arona.BlueOSJelly.picKey(android.app.WallpaperManager.FLAG_LOCK, wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK)))
++        jelly.pics.keys.retainAll(keep)
++        org.blueos.arona.BlueOSJelly.write(contentResolver, jelly)
++    }
++
++    private fun jellyPage(): List<Item> {
++        val J = org.blueos.arona.BlueOSJelly
++        if (jellyEditor == null) {
++            jelly = J.read(contentResolver)
++            if (!jellyTwo()) jellyWhich = android.app.WallpaperManager.FLAG_SYSTEM
++            jellyEditor = BlueOSJellyEditorView(this).apply {
++                accent = this@BlueOSSettingsActivity.accent
++                changed = { jellySave() }
++                onSelect = { jellyArea = it; rebuildPage() }
++            }
++        }
++        val ed = jellyEditor!!
++        val areas = jellyAreas()
++        if (jellyArea >= areas.size) jellyArea = (areas.size - 1).coerceAtLeast(0)
++        ed.areas = areas
++        ed.selected = jellyArea
++        ed.edit = jellyEditing
++        if (ed.tag != jellyKey()) { ed.tag = jellyKey(); ed.load(jellyWhich, getString(R.string.blueos_s_jelly_live)) }
++        val on = { jelly.on }
++        val a = areas.getOrNull(jellyArea)
++        val out = mutableListOf<Item>(
++            Item.SwFn(R.string.blueos_s_jelly_on, R.string.blueos_s_jelly_on_d, { jelly.on }, { jelly.on = it; jellySave() }),
++            Item.Header(R.string.blueos_s_h_jelly_where),
++            Item.SwFn(R.string.blueos_s_jelly_lock, null, { jelly.lock }, { jelly.lock = it; jellySave() }, dep = on),
++            Item.SwFn(R.string.blueos_s_jelly_home, R.string.blueos_s_jelly_home_d, { jelly.home }, { jelly.home = it; jellySave() }, dep = on),
++            Item.Header(R.string.blueos_s_h_jelly_areas),
++        )
++        if (jellyTwo()) out += Item.ChoiceFn(R.string.blueos_s_jelly_pic, listOf(
++            R.string.blueos_s_jelly_pic_lock to android.app.WallpaperManager.FLAG_LOCK,
++            R.string.blueos_s_jelly_pic_home to android.app.WallpaperManager.FLAG_SYSTEM), { jellyWhich },
++            { jellyWhich = it; jellyArea = 0; rebuildPage() })
++        out += Item.Custom({ ed })
++        out += Item.Custom({ jellyChips(areas) })
++        out += Item.SwFn(R.string.blueos_s_jelly_edit, R.string.blueos_s_jelly_edit_d, { jellyEditing },
++            { jellyEditing = it; ed.edit = it }, dep = { areas.isNotEmpty() })
++        if (a != null) {
++            fun changed(remask: Boolean) { if (remask) ed.rebuild() else ed.rebuild(); jellySave() }
++            out += Item.Header(R.string.blueos_s_h_jelly_area)
++            out += Item.ChoiceFn(R.string.blueos_s_jelly_shape, listOf(
++                R.string.blueos_s_jelly_circle to J.CIRCLE, R.string.blueos_s_jelly_oval to J.OVAL,
++                R.string.blueos_s_jelly_rect to J.RECT, R.string.blueos_s_jelly_free to J.FREE), { a.shape }, { v ->
++                    a.shape = v
++                    if (v == J.FREE) { a.pts = null; jellyEditing = true; ed.edit = true }
++                    changed(true)
++                    rebuildPage()
++                })
++            if (a.shape == J.FREE) out += Item.Info(R.string.blueos_s_jelly_free,
++                if (a.pts == null) R.string.blueos_s_jelly_free_draw else R.string.blueos_s_jelly_free_again)
++            out += Item.SliderFn(R.string.blueos_s_jelly_strength, { a.strength }, { a.strength = it; changed(false) },
++                { getString(if (it < 34) R.string.blueos_s_jelly_strength_lo else if (it < 67) R.string.blueos_s_jelly_strength_mid else R.string.blueos_s_jelly_strength_hi) })
++            out += Item.SliderFn(R.string.blueos_s_jelly_spring, { a.spring }, { a.spring = it; changed(false) },
++                { getString(if (it < 34) R.string.blueos_s_jelly_spring_lo else if (it < 67) R.string.blueos_s_jelly_spring_mid else R.string.blueos_s_jelly_spring_hi) })
++            out += Item.SliderFn(R.string.blueos_s_jelly_soft, { a.soft }, { a.soft = it; changed(true) },
++                { getString(if (it < 34) R.string.blueos_s_jelly_soft_lo else if (it < 67) R.string.blueos_s_jelly_soft_mid else R.string.blueos_s_jelly_soft_hi) })
++            out += Item.SwFn(R.string.blueos_s_jelly_motion, R.string.blueos_s_jelly_motion_d, { a.motion }, { a.motion = it; changed(false) })
++            out += Item.SwFn(R.string.blueos_s_jelly_touch, R.string.blueos_s_jelly_touch_d, { a.touch }, { a.touch = it; changed(false) })
++            out += Item.Btn(R.string.blueos_s_jelly_delete, null, dep = { true }) {
++                areas.removeAt(jellyArea)
++                jellyArea = (jellyArea - 1).coerceAtLeast(0)
++                if (areas.isEmpty()) jellyEditing = false
++                jellySave()
++                rebuildPage()
++            }
++        }
++        out += Item.Header(R.string.blueos_s_h_jelly_more)
++        out += Item.Info(R.string.blueos_s_jelly_info, R.string.blueos_s_jelly_info_d)
++        return out
++    }
++
++    /** The areas as chips (tap = pick it) and «Добавить» while there are fewer than four. */
++    private fun jellyChips(areas: MutableList<org.blueos.arona.BlueOSJelly.Area>): View {
++        val J = org.blueos.arona.BlueOSJelly
++        val flow = com.google.android.material.chip.ChipGroup(this).apply {
++            chipSpacingHorizontal = (8 * dp).toInt()
++            chipSpacingVertical = (8 * dp).toInt()
++        }
++        fun chip(label: String, sel: Boolean, click: () -> Unit) = TextView(this).apply {
++            text = label
++            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
++            gravity = Gravity.CENTER
++            isSingleLine = true
++            setPadding((14 * dp).toInt(), (8 * dp).toInt(), (14 * dp).toInt(), (8 * dp).toInt())
++            background = android.graphics.drawable.GradientDrawable().apply {
++                cornerRadius = 8 * dp
++                if (sel) setColor(sys(android.R.color.system_secondary_container_light, android.R.color.system_secondary_container_dark))
++                else setStroke((1 * dp).toInt(), cOutline)
++            }
++            setTextColor(if (sel) sys(android.R.color.system_on_secondary_container_light,
++                android.R.color.system_on_secondary_container_dark) else cOnVar)
++            setOnClickListener { click() }
++        }
++        val names = mapOf(J.CIRCLE to R.string.blueos_s_jelly_circle, J.OVAL to R.string.blueos_s_jelly_oval,
++            J.RECT to R.string.blueos_s_jelly_rect, J.FREE to R.string.blueos_s_jelly_free)
++        areas.forEachIndexed { i, a ->
++            flow.addView(chip("${i + 1} · ${getString(names.getValue(a.shape))}", i == jellyArea) { jellyArea = i; rebuildPage() })
++        }
++        if (areas.size < J.MAX) flow.addView(chip("+  " + getString(R.string.blueos_s_jelly_add), false) {
++            // a new oval in the middle, a little apart from the others
++            areas += org.blueos.arona.BlueOSJelly.Area(shape = J.OVAL, x = .5f, y = (.35f + .12f * areas.size).coerceAtMost(.8f))
++            jellyArea = areas.size - 1
++            jellyEditing = true
++            if (!jelly.on) jelly.on = true
++            jellySave()
++            rebuildPage()
++        })
++        return flow
++    }
++
+     private fun pickLobby() {
+         val all = org.blueos.arona.BlueOSLobbies.list()
+         if (all.isEmpty()) { openAssets(); return }
+@@ -778,7 +932,7 @@ class BlueOSSettingsActivity : Activity() {
+                 HOME -> R.string.blueos_s_page_home; WEATHER -> R.string.blueos_s_page_weather
+                 CLOCK -> R.string.blueos_s_page_clock; MOTION -> R.string.blueos_s_page_motion
+                 COLORS -> R.string.blueos_s_page_colors; CHIBI -> R.string.blueos_s_page_chibi
+-                LOBBY -> R.string.blueos_s_page_lobby
++                LOBBY -> R.string.blueos_s_page_lobby; JELLY -> R.string.blueos_s_page_jelly
+                 else -> R.string.blueos_s_page_arona
+             })
+             setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
+@@ -793,9 +947,24 @@ class BlueOSSettingsActivity : Activity() {
+         }
+         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+         setContentView(root)
++        pageList = list
++        fillPage(page)
++    }
++
++    private var pageList: LinearLayout? = null
++
++    /** 0.9: the page's rows again (the jelly's areas were added / removed / picked). */
++    private fun rebuildPage() {
++        rows.clear()
++        pageList?.removeAllViews()
++        fillPage(intent.getStringExtra(EXTRA_PAGE) ?: ARONA)
++    }
++
++    private fun fillPage(page: String) {
++        val list = pageList ?: return
+         val items = when (page) {
+             HOME -> homePage(); WEATHER -> weatherPage(); CLOCK -> clockPage(); MOTION -> motionPage()
+-            COLORS -> colorsPage(); CHIBI -> chibiPage(); LOBBY -> lobbyPage()
++            COLORS -> colorsPage(); CHIBI -> chibiPage(); LOBBY -> lobbyPage(); JELLY -> jellyPage()
+             else -> aronaPage()
+         }
+         // rows between two section titles form one group: rounded at its ends, 2 dp apart (SettingsLib expressive)
+@@ -1021,6 +1190,47 @@ class BlueOSSettingsActivity : Activity() {
+                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+                 update = {}
+             }
++            is Item.SwFn -> {
++                setTexts(item.title, item.desc?.let { getString(it) })
++                val sw = layoutInflater.inflate(R.layout.blueos_settings_switch, row, false) as android.widget.CompoundButton
++                row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = (16 * dp).toInt() })
++                row.addView(sw)
++                row.setOnClickListener { item.set(!item.get()); refresh() }
++                update = { sw.isChecked = item.get() }
++            }
++            is Item.ChoiceFn -> {
++                row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
++                row.setOnClickListener {
++                    choose(item.title, item.options.map { it.first }, item.options.indexOfFirst { it.second == item.get() }) {
++                        item.set(item.options[it].second); refresh()
++                    }
++                }
++                update = { setTexts(item.title, item.options.firstOrNull { it.second == item.get() }?.let { getString(it.first) }) }
++            }
++            is Item.SliderFn -> {
++                row.isClickable = false
++                setTexts(item.title, item.desc(item.get()))
++                val bar = layoutInflater.inflate(R.layout.blueos_settings_slider, texts, false)
++                    as com.google.android.material.slider.Slider
++                bar.valueFrom = 0f
++                bar.valueTo = 100f
++                texts.addView(bar, LinearLayout.LayoutParams(-1, -2).apply { topMargin = (4 * dp).toInt() })
++                row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
++                bar.addOnChangeListener { _, v, fromUser -> if (fromUser) desc.text = item.desc(v.toInt()) }
++                bar.addOnSliderTouchListener(object : com.google.android.material.slider.Slider.OnSliderTouchListener {
++                    override fun onStartTrackingTouch(s: com.google.android.material.slider.Slider) {}
++                    override fun onStopTrackingTouch(s: com.google.android.material.slider.Slider) { item.set(s.value.toInt()) }
++                })
++                update = { val v = item.get().coerceIn(0, 100); bar.value = v.toFloat(); desc.text = item.desc(v) }
++            }
++            is Item.Custom -> {
++                row.isClickable = false
++                row.setPadding((12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt())
++                val v = item.make()
++                (v.parent as? android.view.ViewGroup)?.removeView(v)
++                row.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
++                update = item.onUpdate
++            }
+             else -> update = {}
+         }
+         rows += item to {
+diff --git a/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt b/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
+index 6e3b08c3..867e1dec 100644
+--- a/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
++++ b/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
+@@ -129,6 +129,7 @@ constructor(
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.CLOCK.entry(layoutInflater, optionContainer))
+                     // 0.9 «Лобби»: the screen one swipe right of the lock screen
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.LOBBY.entry(layoutInflater, optionContainer))
++                    add(com.android.customization.blueos.BlueOSCustomizationOption.JELLY.entry(layoutInflater, optionContainer))
+                     // 0.8: «Цвета» — a role per element (clock, halo, AOD, icons)
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.COLORS.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.MOTION.entry(layoutInflater, optionContainer))
+@@ -211,6 +212,7 @@ constructor(
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.ARONA.entry(layoutInflater, optionContainer))
+                     // BlueOS 0.9: the 3D chibis on the home screen
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.CHIBI.entry(layoutInflater, optionContainer))
++                    add(com.android.customization.blueos.BlueOSCustomizationOption.JELLY.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.WEATHER.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.MOTION.entry(layoutInflater, optionContainer))
+                 }

@@ -1,0 +1,102 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Mon, 9 Nov 2026 01:17:56 +0700
+Subject: [PATCH 11/18] BlueOS: Settings: character files also take chibi voice
+ lines
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I0c2645897903bea1e22c96868dcaa8e574306bbb
+---
+ res/values-ru/blueos_strings.xml              |  1 +
+ res/values/blueos_strings.xml                 |  1 +
+ .../settings/blueos/BlueOSAssetsActivity.kt   | 25 ++++++++++++++++++-
+ 3 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/res/values-ru/blueos_strings.xml b/res/values-ru/blueos_strings.xml
+index 4a7ec979b61..930123d6cbe 100644
+--- a/res/values-ru/blueos_strings.xml
++++ b/res/values-ru/blueos_strings.xml
+@@ -72,6 +72,7 @@
+     <string name="blueos_assets_g_plana">Плана</string>
+     <string name="blueos_assets_chibi">Чиби: <xliff:g id="count" example="4">%d</xliff:g></string>
+     <string name="blueos_assets_chibi_skipped">Пропущено файлов .glb: <xliff:g id="count" example="2">%d</xliff:g>. В них нет анимаций кафе (Cafe_Idle, Cafe_Walk), или это не 3D-модели с костями.</string>
++    <string name="blueos_assets_chibi_voice">Голоса чиби: <xliff:g id="count" example="3">%d</xliff:g></string>
+     <string name="blueos_assets_g_plana_voice">Голос Планы</string>
+     <string name="blueos_assets_g_ui">Звуки блокировки и касания</string>
+     <string name="blueos_assets_g_ringtones">Мелодии звонка</string>
+diff --git a/res/values/blueos_strings.xml b/res/values/blueos_strings.xml
+index 17d69fe56e7..51a3bd78105 100644
+--- a/res/values/blueos_strings.xml
++++ b/res/values/blueos_strings.xml
+@@ -78,6 +78,7 @@
+     <string name="blueos_assets_g_plana">Plana</string>
+     <!-- BlueOS 0.9: 3D chibis (.glb) found anywhere in the picked folder or archive -->
+     <string name="blueos_assets_chibi">Chibis: <xliff:g id="count" example="4">%d</xliff:g></string>
++    <string name="blueos_assets_chibi_voice">Chibi voices: <xliff:g id="count" example="3">%d</xliff:g></string>
+     <string name="blueos_assets_chibi_skipped">.glb files skipped: <xliff:g id="count" example="2">%d</xliff:g>. They have no café animations (Cafe_Idle, Cafe_Walk) or aren\'t 3D models with bones.</string>
+     <string name="blueos_assets_g_plana_voice">Plana\'s voice</string>
+     <string name="blueos_assets_g_ui">Lock and touch sounds</string>
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index 1a161a36534..09dda0031a9 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -296,7 +296,11 @@ class BlueOSAssetsActivity : Activity() {
+         }
+         // 0.9: 3D chibis — every .glb in any folder (the user's own models; checked after copying)
+         val chibis = sources.filter { it.name.lowercase().endsWith(".glb") }.distinctBy { chibiName(it.name) }
+-        if (found.isEmpty() && scene.isEmpty() && chibis.isEmpty()) return getString(R.string.blueos_assets_none)
++        // 0.9: the chibis' voice lines — whose: the file's own prefix (the wiki's "Aoba_Lobby_1.ogg"), else its folder
++        // ("Голоса/Aoba/Lobby_1.ogg", as scripts-claude/chibi-voices.py lays them out)
++        val voices = sources.mapNotNull { s -> chibiVoice(s)?.let { (who, line) -> Triple(s, who, line) } }
++            .distinctBy { "${it.second}/${it.third}" }
++        if (found.isEmpty() && scene.isEmpty() && chibis.isEmpty() && voices.isEmpty()) return getString(R.string.blueos_assets_none)
+ 
+         setBusy(true, R.string.blueos_assets_copying)
+         val verified = HashSet<Target>()
+@@ -324,6 +328,12 @@ class BlueOSAssetsActivity : Activity() {
+                 if (isChibi(f)) chibiOk++ else { f.delete(); chibiSkipped++ }
+             }
+         }
++        val voiced = HashSet<String>()
++        for ((s, who, line) in voices) {
++            wanted += Pair<Source, (InputStream) -> Unit>(s) { input ->
++                write(input, File("$ADDED/$CHIBI/voice/$who/$line")); voiced += who
++            }
++        }
+         copy(wanted)
+         changed = true
+ 
+@@ -348,6 +358,15 @@ class BlueOSAssetsActivity : Activity() {
+         return report(targets, found.keys, verified, deskCut, chibiOk, chibiSkipped)
+     }
+ 
++    /** A chibi's voice line: (her name as the launcher looks it up — lowercase, like the .glb's name, line file). */
++    private fun chibiVoice(s: Source): Pair<String, String>? {
++        val m = VOICE.find(s.name) ?: return null
++        val prefix = s.name.substring(0, m.range.first).trimEnd('_', ' ').replace('_', ' ')
++        val who = prefix.ifEmpty { s.path.substringAfterLast('/') }.trim()
++        if (who.isEmpty()) return null
++        return chibiName(who).lowercase() to m.value.replace(' ', '_')
++    }
++
+     /** «Airi (Band).glb» → «Airi (Band).glb»: only characters that are safe in a file name on any side. */
+     private fun chibiName(name: String) = name.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
+ 
+@@ -447,6 +466,8 @@ class BlueOSAssetsActivity : Activity() {
+             lines += "${if (chibiOk > 0 || chibisNow > 0) "✓" else "—"} ${getString(R.string.blueos_assets_chibi, chibisNow)}"
+         }
+         if (chibiSkipped > 0) lines += getString(R.string.blueos_assets_chibi_skipped, chibiSkipped)
++        val voicedNow = File("$ADDED/$CHIBI/voice").listFiles { f -> f.isDirectory }?.size ?: 0
++        if (voicedNow > 0) lines += "✓ ${getString(R.string.blueos_assets_chibi_voice, voicedNow)}"
+         val odd = found.size - verified.size
+         if (odd > 0) lines += "\n" + getString(R.string.blueos_assets_odd, odd)
+         lines += "\n" + getString(R.string.blueos_assets_done)
+@@ -486,6 +507,8 @@ class BlueOSAssetsActivity : Activity() {
+         private const val ADDED = "/data/misc/blueos"
+         private const val LIST = "/product/etc/blueos/assets-files.txt"
+         private const val SCENE = "arona_workpage_daytime"
++        /** the lines the chibis use (BlueOSChibiLayer.Sound); the wiki writes spaces or underscores */
++        private val VOICE = Regex("""(Formation[_ ]Select|Battle[_ ]Damage[_ ]\d+|Relationship[_ ]Up[_ ]\d+|Lobby[_ ]\d+([_ ]\d+)?|Cafe[_ ]monolog[_ ]\d+)\.ogg$""", RegexOption.IGNORE_CASE)
+         /** org.blueos.arona.BlueOSMedia.CHIBI: the 0.9 chibis' .glb files under [ADDED] */
+         private const val CHIBI = "chibi"
+         private val CHIBI_NEEDS = listOf("Cafe_Idle", "Cafe_Walk")

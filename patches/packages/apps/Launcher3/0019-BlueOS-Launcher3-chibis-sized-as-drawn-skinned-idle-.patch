@@ -1,0 +1,333 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 14:09:28 +0700
+Subject: [PATCH 19/23] BlueOS: Launcher3: chibis sized as drawn (skinned idle
+ pose), no crash on models without clips
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I177fefb6e69faa02ee2b6c1e6dd38312597296b6
+---
+ .../launcher3/blueos/BlueOSChibiLayer.kt      | 227 +++++++++++++++++-
+ 1 file changed, 214 insertions(+), 13 deletions(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+index 2de07a7c17..c5ef43451a 100644
+--- a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
++++ b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+@@ -50,6 +50,7 @@ import kotlin.math.max
+ import kotlin.math.min
+ import kotlin.math.sign
+ import kotlin.math.sin
++import kotlin.math.sqrt
+ 
+ /**
+  * BlueOS 0.9: 3D chibis living on the home screen — the user's own .glb files (Settings «Файлы персонажа» copies them
+@@ -539,7 +540,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         private var patOn = false; private var patAmt = 0f; private var patOff = 0f; private var patOffNow = 0f; private var bob = 0f
+         private var strokes = 0; private var dir = 0f; private var lastX = 0f; private var heartAt = 0L; private var patSince = 0L
+ 
+-        fun fit(size: Float) { h = size; w = m.widthPerHeight * size }
++        fun fit(size: Float) { h = size * m.drawnPerHeight; w = m.widthPerHeight * h }
+ 
+         /** On the screen now (or nearly): only then is she posed and drawn. */
+         var onScreen = true; private set
+@@ -880,8 +881,9 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+             // Each act with its fallbacks, checked against the 289 models of a whole collection (scratch scan of 0.9):
+             // the café set is in ~265 of them, Vital_Death in 187, Formation_Pickup in 231, Move_Jump in 87. A model
+             // without any clip for an act doesn't do it (no other act's clip in its place).
+-            val idle = find(Regex("(\\d+_)?Cafe_Idle", RX.I), Regex("NonWeapon_Idle", RX.I), Regex("Normal_Idle", RX.I),
+-                Regex("Idle", RX.I), Regex("Formation_Idle", RX.I), Regex(".*_Idle", RX.I)).coerceAtLeast(0)
++            // the idle Fit chose (the first candidate that shows her body), else the first candidate there is
++            val idle = (prep.fit?.idle?.let { f -> names.indexOfFirst { it == f } }?.takeIf { it >= 0 }
++                ?: find(*IDLE_RX.toTypedArray())).coerceAtLeast(if (names.isEmpty()) -1 else 0)   // -1: no clips at all
+             val walk = find(Regex("(\\d+_)?Cafe_Walk", RX.I), Regex("Walk(ing)?", RX.I), Regex("Move_Ing", RX.I)).let { if (it < 0) idle else it }
+             val react = find(Regex("(\\d+_)?Cafe_Reaction", RX.I), Regex("Victory_Start", RX.I), Regex("Victory_End", RX.I))
+             // thrown about / dizzy: her panic, else her pick-up wriggle, else idle
+@@ -896,7 +898,10 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+             // no model has), so also what nearly every student has of her own, of 289 models: her gesture (Public,
+             // 181), her victory pose (179), her callsign (180), her EX skill (217).
+             val acts = names.indices.filter { ACT_CLIPS.matches(names[it]) }
+-            fun duration(i: Int) = if (i < 0) 1f else animator.getAnimationDuration(i)
++            // a clip that isn't there crashed the whole launcher inside Filament (SIGSEGV in getAnimationDuration):
++            // Kei (Prototype), Nagusa (Cut-in), Yuzu (Battle) (Cut-in) have no clips at all — she just stands
++            private fun has(i: Int) = i in names.indices
++            fun duration(i: Int) = if (!has(i)) 1f else animator.getAnimationDuration(i)
+             fun index(name: String) = names.indexOfFirst { it.equals(name, ignoreCase = true) }
+             /** Debug: world scale and position (dp) of a few prop bones, whether the rest pose holds them. */
+             fun nodes(): String = listOf("bone_root_piano", "bone_piano", "bone_pianobag", "bone_prop", "Bip001_Weapon", "CH0251_Instrument_Mesh")
+@@ -1043,10 +1048,16 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+             // Z-up (the skeleton stands them up): the tall axis of the body's box is her height, its bottom her feet.
+             private val box = bodyBox(asset)
+             private val up = if (box.halfExtent[2] > box.halfExtent[1] * 1.3f) 2 else 1
+-            private val minUp = box.center[up] - box.halfExtent[up]
+-            private val height = (box.halfExtent[up] * 2).coerceAtLeast(.001f)
+-            val widthPerHeight = box.halfExtent[0] * 2 / height
+-            fun debug() = "up=${"YZ"[up - 1]} height=${"%.3f".format(height)} k=${"%.0f".format(h0 / height)}" +
++            // as drawn (Fit: skinned, idle pose) — the mesh's own box only when it couldn't be measured
++            private val fit = prep.fit
++            private val minUp = fit?.feet ?: (box.center[up] - box.halfExtent[up])
++            private val height = (fit?.h ?: (box.halfExtent[up] * 2)).coerceAtLeast(.001f)
++            private val centerX = fit?.cx ?: box.center[0]
++            val widthPerHeight = (fit?.w ?: (box.halfExtent[0] * 2)) / height
++            /** Her idle pose's height for each unit of her full (bind pose) height: «Размер» is the full height, so a
++             *  crouching idle (Yuzu (Maid), Renge) stays in scale with the others and her touch zone is her real size. */
++            val drawnPerHeight = fit?.let { (it.h / it.bindH.coerceAtLeast(.001f)).coerceIn(.3f, 1.5f) } ?: 1f
++            fun debug() = "fit=${fit != null} idle=${names.getOrNull(idle)} up=${"YZ"[up - 1]} height=${"%.3f".format(height)} k=${"%.0f".format(h0 / height)}" +
+                 (if (canSit) " hipY=${"%.3f".format(modelY(thighL))} footY=${"%.3f".format(if (footL != 0) modelY(footL) else 0f)} minUp=${"%.3f".format(minUp)} sitDrop=${"%.1f".format(sitDrop)}" else " noSit")
+             private var h0 = 120f
+             private val head = asset.getFirstEntityByName("Bip001 Head").let { if (it != 0) it else asset.getFirstEntityByName("Head") }
+@@ -1094,7 +1105,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 wasFading = fading; wasSitting = sitting; wasBent = bent
+                 Matrix.setIdentityM(lastHead, 0); Matrix.setIdentityM(lastNeck, 0)
+                 if (dbgPiano != 0) { tm.getTransform(dbgPiano, tmp); dbgA = colLen(tmp) }
+-                if (clip >= 0) animator.applyAnimation(clip, t)
++                if (has(clip)) animator.applyAnimation(clip, t)
+                 if (dbgPiano != 0) { tm.getTransform(dbgPiano, tmp); dbgB = colLen(tmp) }
+                 if (dbgFrames > 0) {
+                     dbgFrames--
+@@ -1104,7 +1115,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                             n.replace(' ', '_') + "=" + tmp.joinToString(",") { "%.4f".format(java.util.Locale.ROOT, it) }
+                         })
+                 }
+-                if (prev >= 0 && fade < 1f) animator.applyCrossFade(prev, prevT, fade)
++                if (has(prev) && fade < 1f) animator.applyCrossFade(prev, prevT, fade)
+                 if (sit > .001f && canSit) {
+                     sitPose(sit, swing)
+                     // her seat on the edge: the hip joints minus the thighs' thickness, measured on this model
+@@ -1122,7 +1133,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 Matrix.rotateM(m, 0, Math.toDegrees(turn.toDouble()).toFloat(), 0f, 1f, 0f)
+                 Matrix.scaleM(m, 0, k * (1 + squash * .5f), k * (1 - squash), k * (1 + squash * .5f))
+                 // drawn space is Y-up either way (a Z-up mesh is stood up by its skeleton): feet to 0, centred in x
+-                Matrix.translateM(m, 0, -box.center[0], -minUp, 0f)
++                Matrix.translateM(m, 0, -centerX, -minUp, 0f)
+                 tm.setTransform(tm.getInstance(asset.root), m)
+                 parts(clip, t, prev, prevT, fading)
+             }
+@@ -1378,6 +1389,9 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         private val ACT_CLIPS = Regex("NonWeapon_(Keyboard|Bass|Guitar|Stretching)|(\\d+_)?(Public(01|_01)?|Victory_Start|Normal(01)?_Callsign|Exs)",
+             RegexOption.IGNORE_CASE)
+         private const val REST_CLIP = "BlueOS_Rest"
++        /** Her idle clip, in this order of preference (Model.idle and Fit). */
++        private val IDLE_RX = listOf("(\\d+_)?Cafe_Idle", "NonWeapon_Idle", "Normal_Idle", "Idle", "Formation_Idle", ".*_Idle")
++            .map { Regex(it, RegexOption.IGNORE_CASE) }
+         private const val EDGE_DP = 28f                       // the screen's side where a held chibi turns the page
+         private const val EDGE_MS = 450L
+         private const val RENDER_SCALE = .6f                  // of the screen's pixels per side (0.36 of the area)
+@@ -1471,7 +1485,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 val binAt = 20 + len
+                 val hasBin = bytes.size >= binAt + 8 && b.getInt(binAt + 4) == 0x004E4942
+                 var bin = if (hasBin) bytes.copyOfRange(binAt + 8, binAt + 8 + b.getInt(binAt)) else ByteArray(0)
+-                if (hasBin) found = parts(g, bin)
++                if (hasBin) found = parts(g, bin).copy(fit = try { fitOf(g, bin) } catch (e: Exception) { Log.w(TAG, "can't measure", e); null })
+                 if (hasBin && android.os.SystemProperties.get("debug.blueos.chibi.cubic", "") != "1") bin = linearize(g, bin)
+                 if (hasBin) bin = twoKeys(g, bin)
+                 if (hasBin) bin = writeDefaults(g, bin)
+@@ -1557,6 +1571,184 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         }
+ 
+ 
++        /** Any accessor as floats (float, or (normalized) unsigned byte / short / int), with its component count. */
++        private fun values(g: JSONObject, bin: ByteArray, acc: Int): Pair<FloatArray, Int>? {
++            val a = g.optJSONArray("accessors")?.optJSONObject(acc) ?: return null
++            if (!a.has("bufferView")) return null
++            val comps = when (a.optString("type")) { "SCALAR" -> 1; "VEC2" -> 2; "VEC3" -> 3; "VEC4" -> 4; "MAT4" -> 16; else -> return null }
++            val ct = a.optInt("componentType"); val norm = a.optBoolean("normalized", false)
++            val size = when (ct) { 5126, 5125 -> 4; 5123 -> 2; 5121 -> 1; else -> return null }
++            val v = g.optJSONArray("bufferViews")?.optJSONObject(a.getInt("bufferView")) ?: return null
++            if (v.optInt("buffer", 0) != 0) return null
++            val stride = v.optInt("byteStride", 0).let { if (it == 0) comps * size else it }
++            val base = v.optInt("byteOffset", 0) + a.optInt("byteOffset", 0)
++            val n = a.optInt("count")
++            if (n <= 0 || base + (n - 1) * stride + comps * size > bin.size) return null
++            val bb = ByteBuffer.wrap(bin).order(ByteOrder.LITTLE_ENDIAN)
++            val out = FloatArray(n * comps) { i ->
++                val at = base + (i / comps) * stride + (i % comps) * size
++                when (ct) {
++                    5126 -> bb.getFloat(at)
++                    5125 -> (bb.getInt(at).toLong() and 0xffffffffL).toFloat()
++                    5123 -> (bb.getShort(at).toInt() and 0xffff).let { if (norm) it / 65535f else it.toFloat() }
++                    else -> (bb.get(at).toInt() and 0xff).let { if (norm) it / 255f else it.toFloat() }
++                }
++            }
++            return out to comps
++        }
++
++        /** Column-major TRS matrix (glTF's order: T · R · S). */
++        private fun trsInto(t: FloatArray, q: FloatArray, sc: FloatArray, m: FloatArray, o: Int) {
++            val x = q[0]; val y = q[1]; val z = q[2]; val w = q[3]
++            m[o] = (1 - 2 * (y * y + z * z)) * sc[0]; m[o + 1] = 2 * (x * y + z * w) * sc[0]; m[o + 2] = 2 * (x * z - y * w) * sc[0]; m[o + 3] = 0f
++            m[o + 4] = 2 * (x * y - z * w) * sc[1]; m[o + 5] = (1 - 2 * (x * x + z * z)) * sc[1]; m[o + 6] = 2 * (y * z + x * w) * sc[1]; m[o + 7] = 0f
++            m[o + 8] = 2 * (x * z + y * w) * sc[2]; m[o + 9] = 2 * (y * z - x * w) * sc[2]; m[o + 10] = (1 - 2 * (x * x + y * y)) * sc[2]; m[o + 11] = 0f
++            m[o + 12] = t[0]; m[o + 13] = t[1]; m[o + 14] = t[2]; m[o + 15] = 1f
++        }
++
++        /**
++         * [Fit]: her body mesh (the biggest «…_Body», else every mesh) skinned on the CPU at t = 0 of her idle clip —
++         * the first idle candidate (the order of Model.idle) that shows the body at least half as tall as its bind
++         * pose (Sena's Cafe_Idle folds her body to a point). ~12000 vertices (every k-th) keep the hair tips and fingers in the box.
++         */
++        private fun fitOf(g: JSONObject, bin: ByteArray): Fit? {
++            val nodes = g.optJSONArray("nodes") ?: return null
++            val meshes = g.optJSONArray("meshes") ?: return null
++            val accs = g.optJSONArray("accessors") ?: return null
++            val n = nodes.length()
++            val parent = IntArray(n) { -1 }
++            for (i in 0 until n) nodes.getJSONObject(i).optJSONArray("children")?.let { c -> for (k in 0 until c.length()) parent[c.getInt(k)] = i }
++            fun arr(o: JSONObject, key: String, def: FloatArray) = o.optJSONArray(key)?.let { a -> FloatArray(def.size) { a.optDouble(it, def[it].toDouble()).toFloat() } } ?: def.copyOf()
++            val fixed = arrayOfNulls<FloatArray>(n)                       // nodes given as a matrix (never animated)
++            val t0 = Array(n) { FloatArray(3) }; val r0 = Array(n) { floatArrayOf(0f, 0f, 0f, 1f) }; val s0 = Array(n) { floatArrayOf(1f, 1f, 1f) }
++            for (i in 0 until n) {
++                val nd = nodes.getJSONObject(i)
++                if (nd.has("matrix")) fixed[i] = arr(nd, "matrix", FloatArray(16))
++                else { t0[i] = arr(nd, "translation", FloatArray(3)); r0[i] = arr(nd, "rotation", floatArrayOf(0f, 0f, 0f, 1f)); s0[i] = arr(nd, "scale", floatArrayOf(1f, 1f, 1f)) }
++            }
++            // the body: as bodyBox() picks it on the GPU side
++            fun meshBox(i: Int): FloatArray? {
++                val ps = meshes.optJSONObject(nodes.getJSONObject(i).getInt("mesh"))?.optJSONArray("primitives") ?: return null
++                val lo = floatArrayOf(1e9f, 1e9f, 1e9f); val hi = floatArrayOf(-1e9f, -1e9f, -1e9f)
++                for (k in 0 until ps.length()) {
++                    val a = accs.optJSONObject(ps.getJSONObject(k).optJSONObject("attributes")?.optInt("POSITION", -1) ?: -1) ?: continue
++                    val mn = a.optJSONArray("min") ?: continue; val mx = a.optJSONArray("max") ?: continue
++                    for (c in 0..2) { lo[c] = min(lo[c], mn.optDouble(c).toFloat()); hi[c] = max(hi[c], mx.optDouble(c).toFloat()) }
++                }
++                return floatArrayOf(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])
++            }
++            val meshNodes = (0 until n).filter { nodes.getJSONObject(it).has("mesh") }
++            val bodies = meshNodes.filter { val nm = nodes.getJSONObject(it).optString("name", ""); nm.endsWith("_Body", true) || nm.equals("Body", true) }
++            // the body, and her head when it is a mesh of its own (the NPC models NP0267 / NP0268: «_Body» ends at the
++            // neck, hair and face are separate — measured alone, her head stood over her touch zone)
++            val head = Regex("(?<![a-z])(hair|face|head)", RegexOption.IGNORE_CASE)   // not «wheelchair», «chair»
++            val use = if (bodies.isNotEmpty()) listOf(bodies.maxByOrNull { i -> meshBox(i)?.let { b -> max(b[4] - b[1], b[5] - b[2]) } ?: 0f }!!) +
++                meshNodes.filter { it !in bodies && head.containsMatchIn(nodes.getJSONObject(it).optString("name", "")) } else meshNodes
++            // their vertices (every k-th), joints, weights, and the skin's inverse bind matrices
++            class Prim(val node: Int, val p: FloatArray, val j: FloatArray?, val w: FloatArray?, val joints: IntArray?, val ibm: FloatArray?)
++            val prims = ArrayList<Prim>()
++            var total = 0
++            for (i in use) {
++                val ps = meshes.optJSONObject(nodes.getJSONObject(i).getInt("mesh"))?.optJSONArray("primitives") ?: continue
++                for (k in 0 until ps.length()) total += accs.optJSONObject(ps.getJSONObject(k).optJSONObject("attributes")?.optInt("POSITION", -1) ?: -1)?.optInt("count") ?: 0
++            }
++            val every = max(1, total / 12000)
++            val skins = g.optJSONArray("skins")
++            for (i in use) {
++                val nd = nodes.getJSONObject(i)
++                val ps = meshes.optJSONObject(nd.getInt("mesh"))?.optJSONArray("primitives") ?: continue
++                val skin = if (nd.has("skin")) skins?.optJSONObject(nd.getInt("skin")) else null
++                val joints = skin?.optJSONArray("joints")?.let { a -> IntArray(a.length()) { a.getInt(it) } }
++                val ibm = skin?.let { sk -> if (sk.has("inverseBindMatrices")) values(g, bin, sk.getInt("inverseBindMatrices"))?.first else null }
++                    ?: joints?.let { js -> FloatArray(js.size * 16) { if (it % 16 % 5 == 0) 1f else 0f } }
++                for (k in 0 until ps.length()) {
++                    val at = ps.getJSONObject(k).optJSONObject("attributes") ?: continue
++                    val pos = values(g, bin, at.optInt("POSITION", -1))?.first ?: continue
++                    val jj = if (joints != null) values(g, bin, at.optInt("JOINTS_0", -1))?.first else null
++                    val ww = if (joints != null) values(g, bin, at.optInt("WEIGHTS_0", -1))?.first else null
++                    val cnt = pos.size / 3
++                    val pick = (0 until cnt step every).toList()
++                    prims += Prim(i, FloatArray(pick.size * 3) { pos[pick[it / 3] * 3 + it % 3] },
++                        jj?.let { a -> FloatArray(pick.size * 4) { a[pick[it / 4] * 4 + it % 4] } },
++                        ww?.let { a -> FloatArray(pick.size * 4) { a[pick[it / 4] * 4 + it % 4] } },
++                        if (jj != null && ww != null) joints else null, ibm)
++                }
++            }
++            if (prims.isEmpty()) return null
++            val anims = g.optJSONArray("animations")
++            val clipNames = (0 until (anims?.length() ?: 0)).map { anims!!.getJSONObject(it).optString("name", "") }
++            val world = FloatArray(16 * n); val done = BooleanArray(n); val local = FloatArray(16); val tmp = FloatArray(16)
++            /** Box (minX, minY, maxX, maxY) of the body in [clip]'s first frame (-1 = bind pose). */
++            fun box(clip: Int): FloatArray? {
++                val t = Array(n) { t0[it].copyOf() }; val r = Array(n) { r0[it].copyOf() }; val sc = Array(n) { s0[it].copyOf() }
++                if (clip >= 0) {
++                    val a = anims!!.getJSONObject(clip)
++                    val smp = a.optJSONArray("samplers"); val chs = a.optJSONArray("channels")
++                    if (smp != null && chs != null) for (c in 0 until chs.length()) {
++                        val ch = chs.getJSONObject(c); val tg = ch.optJSONObject("target") ?: continue
++                        if (!tg.has("node")) continue
++                        val node = tg.getInt("node"); if (node !in 0 until n || fixed[node] != null) continue
++                        val sm = smp.optJSONObject(ch.optInt("sampler", -1)) ?: continue
++                        val path = tg.optString("path"); val comps = when (path) { "translation", "scale" -> 3; "rotation" -> 4; else -> continue }
++                        val out = values(g, bin, sm.optInt("output", -1))?.first ?: continue
++                        val off = if (sm.optString("interpolation") == "CUBICSPLINE") comps else 0      // [in, value, out]
++                        if (out.size < off + comps) continue
++                        val dst = when (path) { "translation" -> t[node]; "scale" -> sc[node]; else -> r[node] }
++                        for (q in 0 until comps) dst[q] = out[off + q]
++                        if (path == "rotation") { val l = sqrt(dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2] + dst[3] * dst[3]).coerceAtLeast(1e-9f); for (q in 0..3) dst[q] /= l }
++                    }
++                }
++                java.util.Arrays.fill(done, false)
++                fun w(i: Int): Int {
++                    if (done[i]) return i * 16
++                    // the parent first: it fills [local] too (the other order gave every bone its parent's matrix,
++                    // the chibis came out twice their size)
++                    val po = if (parent[i] >= 0) w(parent[i]) else -1
++                    fixed[i]?.let { System.arraycopy(it, 0, local, 0, 16) } ?: trsInto(t[i], r[i], sc[i], local, 0)
++                    if (po >= 0) Matrix.multiplyMM(world, i * 16, world, po, local, 0)
++                    else System.arraycopy(local, 0, world, i * 16, 16)
++                    done[i] = true; return i * 16
++                }
++                var x0 = Float.MAX_VALUE; var y0 = Float.MAX_VALUE; var x1 = -Float.MAX_VALUE; var y1 = -Float.MAX_VALUE
++                for (p in prims) {
++                    val js = p.joints
++                    val mats = if (js != null) FloatArray(js.size * 16).also { m ->
++                        for ((k, j) in js.withIndex()) if (j in 0 until n) Matrix.multiplyMM(m, k * 16, world, w(j), p.ibm!!, k * 16)
++                    } else null
++                    val nodeM = if (js == null) w(p.node) else 0
++                    for (v in 0 until p.p.size / 3) {
++                        val px = p.p[v * 3]; val py = p.p[v * 3 + 1]; val pz = p.p[v * 3 + 2]
++                        var ox = 0f; var oy = 0f
++                        if (mats != null) {
++                            var ws = 0f
++                            for (q in 0..3) ws += p.w!![v * 4 + q]
++                            if (ws <= 0f) continue
++                            for (q in 0..3) {
++                                val wt = p.w!![v * 4 + q] / ws; if (wt == 0f) continue
++                                val o = p.j!![v * 4 + q].toInt() * 16; if (o < 0 || o + 15 >= mats.size) continue
++                                ox += wt * (mats[o] * px + mats[o + 4] * py + mats[o + 8] * pz + mats[o + 12])
++                                oy += wt * (mats[o + 1] * px + mats[o + 5] * py + mats[o + 9] * pz + mats[o + 13])
++                            }
++                        } else {
++                            ox = world[nodeM] * px + world[nodeM + 4] * py + world[nodeM + 8] * pz + world[nodeM + 12]
++                            oy = world[nodeM + 1] * px + world[nodeM + 5] * py + world[nodeM + 9] * pz + world[nodeM + 13]
++                        }
++                        x0 = min(x0, ox); x1 = max(x1, ox); y0 = min(y0, oy); y1 = max(y1, oy)
++                    }
++                }
++                return if (x1 > x0 && y1 > y0) floatArrayOf(x0, y0, x1, y1) else null
++            }
++            val bind = box(-1) ?: return null
++            val bindH = bind[3] - bind[1]
++            // the idle candidates in Model.idle's order; the first that shows her body
++            val cands = IDLE_RX.flatMap { rx -> clipNames.indices.filter { rx.matches(clipNames[it]) } }.distinct()   // every match: Sena's is SM008101_Normal_Idle
++            for (c in cands) {
++                val b = box(c) ?: continue
++                if (b[3] - b[1] >= bindH * .5f) return Fit(b[3] - b[1], b[1], (b[0] + b[2]) / 2, b[2] - b[0], clipNames[c], bindH)
++            }
++            return Fit(bindH, bind[1], (bind[0] + bind[2]) / 2, bind[2] - bind[0], null, bindH)
++        }
++
+         /** Every float CUBICSPLINE sampler → LINEAR: its values (no tangents) appended to [bin] as a new accessor. */
+         /**
+          * [bin], [pad] zero bytes, then what [add] holds — in ONE new array (`bin + ByteArray(pad) + add` made two
+@@ -1731,6 +1923,15 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+ }
+ 
+ /** A mesh a clip shows (0) or folds away (1), STEP keys (BlueOSChibiLayer.parts). */
++/**
++ * Her body as it is DRAWN in her idle pose (the mesh put on the skeleton, in the asset's own space, Y up): height,
++ * feet, centre, width — and which idle clip that is. The mesh's own box (what Filament reports) is in the mesh's
++ * space before the skin: for a Z-up mesh its bottom isn't where her feet end up (Akane (School Uniform), Mari, Shiroko
++ * (Swimsuit) hovered 60–80 % of their height over their touch zone), a model without a «_Body» mesh was measured with
++ * her props (Fubuki (Swimsuit) came out a third of her size), Sena's body is folded away in Cafe_Idle.
++ */
++private data class Fit(val h: Float, val feet: Float, val cx: Float, val w: Float, val idle: String?, val bindH: Float)
++
+ private class Toggle(val node: String, val times: FloatArray, val values: FloatArray) {
+     fun folded(t: Float): Boolean {
+         var k = 0
+@@ -1747,6 +1948,6 @@ private val EMPTY_BUF: ByteBuffer = ByteBuffer.allocate(0)
+ 
+ /** A model ready for Filament, with what of it needn't be drawn (BlueOSChibiLayer.parts). */
+ private data class Prepared(val buf: ByteBuffer, val toggles: Map<String, List<Toggle>>,
+-                            val props: List<Pair<String, List<String>>>, val bodyJoint: String?) {
++                            val props: List<Pair<String, List<String>>>, val bodyJoint: String?, val fit: Fit? = null) {
+     companion object { val EMPTY = Prepared(EMPTY_BUF, emptyMap(), emptyList(), null) }
+ }

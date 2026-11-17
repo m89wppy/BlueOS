@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Wed, 11 Nov 2026 08:59:03 +0700
+Subject: [PATCH 17/23] =?UTF-8?q?BlueOS:=20Launcher3:=20chibis=20=E2=80=94?=
+ =?UTF-8?q?=20large=20heap,=20one=20copy=20while=20preparing=20a=20model?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The launcher ran out of its 256 MB loading chibi models (4 crashes); config_largeHeap gives 512 MB.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Id8eef0f25841754fed28f8066f75b9f931ac20ab
+---
+ res/values/config.xml                          |  4 +++-
+ .../launcher3/blueos/BlueOSChibiLayer.kt       | 18 +++++++++++++++---
+ 2 files changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/res/values/config.xml b/res/values/config.xml
+index dfc2de6869..951c67d6b6 100644
+--- a/res/values/config.xml
++++ b/res/values/config.xml
+@@ -15,7 +15,9 @@
+ -->
+ <resources>
+     <!-- Miscellaneous -->
+-    <bool name="config_largeHeap">false</bool>
++    <!-- BlueOS 0.9: the chibis (Filament, their models and sounds) live in the launcher: with Android's 256 MB the
++         launcher ran out of memory loading a model and crashed (4 times, 2026-11-09/10); the large heap is 512 MB -->
++    <bool name="config_largeHeap">true</bool>
+ 
+     <!-- A string pointer to the original app name string. This allows derived projects to
+      easily override the app name without providing all translations -->
+diff --git a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+index 2e91d42832..3e27fbbfee 100644
+--- a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
++++ b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+@@ -1555,6 +1555,18 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+ 
+ 
+         /** Every float CUBICSPLINE sampler → LINEAR: its values (no tangents) appended to [bin] as a new accessor. */
++        /**
++         * [bin], [pad] zero bytes, then what [add] holds — in ONE new array (`bin + ByteArray(pad) + add` made two
++         * full copies of the model on the way; with Android's 256 MB the launcher ran out of memory loading one).
++         */
++        private fun joined(bin: ByteArray, pad: Int, add: java.io.ByteArrayOutputStream): ByteArray {
++            val extra = add.toByteArray()
++            val out = ByteArray(bin.size + pad + extra.size)
++            System.arraycopy(bin, 0, out, 0, bin.size)
++            System.arraycopy(extra, 0, out, bin.size + pad, extra.size)
++            return out
++        }
++
+         private fun linearize(g: JSONObject, bin: ByteArray): ByteArray {
+             val anims = g.optJSONArray("animations") ?: return bin
+             val accs = g.optJSONArray("accessors") ?: return bin
+@@ -1594,7 +1606,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 }
+             }
+             if (add.size() == 0) return bin
+-            val nb = bin + ByteArray(pad0) + add.toByteArray()
++            val nb = joined(bin, pad0, add)
+             g.optJSONArray("buffers")?.optJSONObject(0)?.put("byteLength", nb.size)
+             return nb
+         }
+@@ -1643,7 +1655,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 }
+             }
+             if (n == 0) return bin
+-            val nb = bin + ByteArray(pad0) + add.toByteArray()
++            val nb = joined(bin, pad0, add)
+             g.optJSONArray("buffers")?.optJSONObject(0)?.put("byteLength", nb.size)
+             return nb
+         }
+@@ -1705,7 +1717,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                     .put("target", JSONObject().put("node", k / 4).put("path", path)))
+             }
+             anims.put(JSONObject().put("name", REST_CLIP).put("samplers", samplers).put("channels", channels))
+-            val nb = bin + ByteArray(pad0) + add.toByteArray()
++            val nb = joined(bin, pad0, add)
+             g.optJSONArray("buffers")?.optJSONObject(0)?.put("byteLength", nb.size)
+             return nb
+         }

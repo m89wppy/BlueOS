@@ -1,0 +1,134 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 23:24:31 +0700
+Subject: [PATCH 22/23] =?UTF-8?q?BlueOS:=20ThemePicker:=20=C2=AB=D0=9F?=
+ =?UTF-8?q?=D1=80=D0=BE=D0=BA=D1=80=D1=83=D1=82=D0=BA=D0=B0=20=D0=BE=D0=B1?=
+ =?UTF-8?q?=D0=BE=D0=B5=D0=B2=C2=BB=20switch;=20the=20jelly=20needs=20a=20?=
+ =?UTF-8?q?still=20wallpaper;=20the=20editor=20dims=20what=20the=20screen?=
+ =?UTF-8?q?=20doesn't=20show?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I0a3ce9971549f25e129c4199c93cea8bfd5eeb26
+---
+ res/values-ru/blueos_09_strings.xml           |  3 ++
+ res/values/blueos_09_strings.xml              |  3 ++
+ .../blueos/BlueOSJellyEditorView.kt           | 30 +++++++++++++++++++
+ .../blueos/BlueOSSettingsActivity.kt          | 12 ++++++--
+ 4 files changed, 46 insertions(+), 2 deletions(-)
+
+diff --git a/res/values-ru/blueos_09_strings.xml b/res/values-ru/blueos_09_strings.xml
+index ef4051ac..df110c3b 100644
+--- a/res/values-ru/blueos_09_strings.xml
++++ b/res/values-ru/blueos_09_strings.xml
+@@ -159,4 +159,7 @@
+     <string name="blueos_s_h_jelly_more">Ещё</string>
+     <string name="blueos_s_jelly_info">Батарея</string>
+     <string name="blueos_s_jelly_info_d">Обои перерисовываются, только пока что-то дрожит. На экране «Всегда включён» не работает. Новые обои начинаются без областей: они привязаны к картинке</string>
++    <!-- 0.9 «Прокрутка обоев» -->
++    <string name="blueos_s_wall_scroll">Прокрутка обоев</string>
++    <string name="blueos_s_wall_scroll_d">Обои сдвигаются вслед за страницами рабочего стола, как в обычном Android. Выключено — обои стоят на месте. Желе на обоях работает, только когда прокрутка выключена</string>
+ </resources>
+diff --git a/res/values/blueos_09_strings.xml b/res/values/blueos_09_strings.xml
+index b741d069..247d0ef4 100644
+--- a/res/values/blueos_09_strings.xml
++++ b/res/values/blueos_09_strings.xml
+@@ -160,4 +160,7 @@
+     <string name="blueos_s_h_jelly_more">More</string>
+     <string name="blueos_s_jelly_info">Battery</string>
+     <string name="blueos_s_jelly_info_d">The wallpaper is redrawn only while something wobbles. It doesn\'t work on the always-on display. A new wallpaper starts without areas: they belong to the picture</string>
++    <!-- 0.9 «Прокрутка обоев» -->
++    <string name="blueos_s_wall_scroll">Wallpaper scrolling</string>
++    <string name="blueos_s_wall_scroll_d">The wallpaper moves along with the home screen pages, as in stock Android. Off: the wallpaper stays still. Jelly wallpaper works only while scrolling is off</string>
+ </resources>
+diff --git a/src/com/android/customization/blueos/BlueOSJellyEditorView.kt b/src/com/android/customization/blueos/BlueOSJellyEditorView.kt
+index 836c30c1..84b268d9 100644
+--- a/src/com/android/customization/blueos/BlueOSJellyEditorView.kt
++++ b/src/com/android/customization/blueos/BlueOSJellyEditorView.kt
+@@ -65,6 +65,9 @@ class BlueOSJellyEditorView(context: Context) : View(context), Choreographer.Fra
+ 
+     private val dp = resources.displayMetrics.density
+     private var pic: Bitmap? = null
++    /** 0.9: the part of the picture the screen shows (fractions of the picture; the rest is dimmed), null = unknown */
++    private var screenPart: RectF? = null
++    private val screenRect = RectF()
+     private var message: String? = null
+     private var sim: BlueOSJelly.Sim? = null
+     private val renderer by lazy { BlueOSJelly.Renderer() }
+@@ -90,8 +93,26 @@ class BlueOSJellyEditorView(context: Context) : View(context), Choreographer.Fra
+                 val k = min(1f, 1080f / it.width)
+                 if (k < 1f) Bitmap.createScaledBitmap(it, (it.width * k).toInt(), (it.height * k).toInt(), true) else it
+             }
++            // what the screen shows of it with the wallpaper still (the offset in the middle): a wide picture is cut
++            val part = b?.let { full ->
++                try {
++                    val bounds = context.getSystemService(android.view.WindowManager::class.java)
++                        .maximumWindowMetrics.bounds
++                    val size = listOf(android.graphics.Point(bounds.width(), bounds.height()))
++                    // a picture on both screens is the home one: the lock screen has no crops of its own then
++                    val crops = wm.getBitmapCrops(size, which, false).ifEmpty {
++                        wm.getBitmapCrops(size, WallpaperManager.FLAG_SYSTEM, false)
++                    }
++                    crops.firstOrNull()?.let { crop ->
++                        val v = BlueOSJelly.visible(crop, bounds.width(), bounds.height(), .5f)
++                        RectF(v.left / full.width, v.top / full.height, v.right / full.width, v.bottom / full.height)
++                            .takeIf { it.left >= -.01f && it.right <= 1.01f && it.bottom <= 1.01f }
++                    }
++                } catch (e: RuntimeException) { null }
++            }
+             main.post {
+                 pic = small
++                screenPart = part
+                 message = if (small == null) liveText else null
+                 requestLayout()
+                 rebuild()
+@@ -135,6 +156,15 @@ class BlueOSJellyEditorView(context: Context) : View(context), Choreographer.Fra
+         canvas.drawBitmap(p, null, dst, picPaint)
+         val s = sim
+         if (s != null && s.moving && !edit) renderer.draw(canvas, p, dst, s)
++        screenPart?.let { f ->
++            // outside the screen's part: dimmed — areas there never show
++            screenRect.set(dst.left + f.left * dst.width(), dst.top + f.top * dst.height(),
++                dst.left + f.right * dst.width(), dst.top + f.bottom * dst.height())
++            canvas.save()
++            canvas.clipOutRect(screenRect)
++            canvas.drawColor(Color.argb(140, 0, 0, 0))
++            canvas.restore()
++        }
+         if (!edit) return
+         areas.forEachIndexed { i, a ->
+             val path = BlueOSJelly.path(a, p.width.toFloat(), p.height.toFloat())
+diff --git a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+index 33836dad..65bd0743 100644
+--- a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
++++ b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+@@ -480,10 +480,17 @@ class BlueOSSettingsActivity : Activity() {
+         ed.selected = jellyArea
+         ed.edit = jellyEditing
+         if (ed.tag != jellyKey()) { ed.tag = jellyKey(); ed.load(jellyWhich, getString(R.string.blueos_s_jelly_live)) }
+-        val on = { jelly.on }
++        // 0.9: only on a still wallpaper — while «Прокрутка обоев» is on the switch is off and can't be turned on
++        val still = { !K.on(contentResolver, K.WALL_SCROLL) }
++        val on = { jelly.on && still() }
+         val a = areas.getOrNull(jellyArea)
+         val out = mutableListOf<Item>(
+-            Item.SwFn(R.string.blueos_s_jelly_on, R.string.blueos_s_jelly_on_d, { jelly.on }, { jelly.on = it; jellySave() }),
++            Item.SwFn(R.string.blueos_s_jelly_on, R.string.blueos_s_jelly_on_d, on, { jelly.on = it; jellySave() },
++                dep = still),
++            Item.SwFn(R.string.blueos_s_wall_scroll, R.string.blueos_s_wall_scroll_d, { K.on(contentResolver, K.WALL_SCROLL) }, {
++                android.provider.Settings.Secure.putInt(contentResolver, K.WALL_SCROLL, if (it) 1 else 0)
++                rebuildPage()
++            }),
+             Item.Header(R.string.blueos_s_h_jelly_where),
+             Item.SwFn(R.string.blueos_s_jelly_lock, null, { jelly.lock }, { jelly.lock = it; jellySave() }, dep = on),
+             Item.SwFn(R.string.blueos_s_jelly_home, R.string.blueos_s_jelly_home_d, { jelly.home }, { jelly.home = it; jellySave() }, dep = on),
+@@ -791,6 +798,7 @@ class BlueOSSettingsActivity : Activity() {
+                 sub = true, dep = { int(K.HOME_WALL_BLUR) > 0 }),
+             Item.Slider(K.HOME_WALL_DIM, R.string.blueos_s_wall_dim_home, max = 80) { v -> wallPct(v) },
+             Item.Slider(K.LOCK_WALL_BLUR, R.string.blueos_s_wall_blur_lock) { v -> wallPct(v) },
++            Item.Sw(K.WALL_SCROLL, R.string.blueos_s_wall_scroll, R.string.blueos_s_wall_scroll_d),
+             Item.Header(R.string.blueos_s_h_c_lock),
+             lockRow(K.COLOR_LOCK_DIGITS, R.string.blueos_s_c_digits, clock = true),
+             lockRow(K.COLOR_LOCK_MINUTES, R.string.blueos_s_c_minutes, clock = true, sameAsHours = true),

@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 02:29:38 +0700
+Subject: [PATCH 18/23] BlueOS: Launcher3: chibi effects window hidden while
+ idle (the keyboard works again)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I043ed40b2522bdc9de9d746b942b4541099961b8
+---
+ src/com/android/launcher3/blueos/BlueOSChibiLayer.kt | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+index 3e27fbbfee..2de07a7c17 100644
+--- a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
++++ b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+@@ -81,7 +81,9 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+     // Before init { }: the first reload() there calls release() → sound.stop() when there are no chibis (0.9 test:
+     // a property declared further down is still null in the constructor, the launcher crashed at every start).
+     private val sound by lazy { Sound().also { s -> s.onWords = { model, text -> main.post { speak(model, text) } } } }
+-    private val fx = BlueOSChibiFx(context)
++    // Hidden until a frame draws the chibis: a visible full-screen window of ours over the keyboard made Android drop
++    // every key as an «untrusted touch» (0.9: no chibi files → the frames never ran → no typing in the apps search)
++    private val fx = BlueOSChibiFx(context).apply { visibility = View.INVISIBLE }
+     private var gl: Gl? = null
+     private val chibis = ArrayList<Chibi>()
+     private var loadedSig = ""
+@@ -229,6 +231,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         sound.stop()
+         gl?.destroy(); gl = null
+         texture.alpha = 0f; shown = 0f
++        fx.visibility = View.INVISIBLE                                 // its window must not stay over the keyboard
+         // Its surface goes too: a new engine attached to a surface that is already there never got a swap chain
+         // (0.9 test: off and on again in Settings → no chibi). Shown again, the view gets a fresh surface.
+         texture.visibility = View.INVISIBLE

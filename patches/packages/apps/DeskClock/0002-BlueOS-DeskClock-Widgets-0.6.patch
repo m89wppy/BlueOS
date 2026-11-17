@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sun, 25 Oct 2026 04:49:34 +0100
-Subject: [PATCH 2/4] BlueOS: DeskClock: Widgets 0.6
+Subject: [PATCH 2/5] BlueOS: DeskClock: Widgets 0.6
 
 - Clock card: the halo over the minutes too; narrow and wide layouts.
 - Halo clock: dark or light text layouts with theme colors resolved by the

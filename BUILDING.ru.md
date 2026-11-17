@@ -32,7 +32,7 @@ repo sync -j8
   <project path="vendor/blueos" name="BlueOS" remote="blueos" revision="main" />
 </manifest>
 ```
-`revision="main"` — самая свежая BlueOS. Нужна ровно версия из релиза — `revision="refs/tags/v0.8.1"`.
+`revision="main"` — самая свежая BlueOS. Нужна ровно версия из релиза — `revision="refs/tags/v0.9.0"`.
 
 Подключить BlueOS к сборке — одна строка:
 ```

@@ -1,0 +1,1158 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 23:24:31 +0700
+Subject: [PATCH 8/9] =?UTF-8?q?BlueOS:=20Etar:=20month=20layouts=20without?=
+ =?UTF-8?q?=20View=20/=20Space=20(RemoteViews=20refused=20them:=20=C2=AB?=
+ =?UTF-8?q?=D0=9D=D0=B5=20=D1=83=D0=B4=D0=B0=D0=B5=D1=82=D1=81=D1=8F=20?=
+ =?UTF-8?q?=D0=B7=D0=B0=D0=B3=D1=80=D1=83=D0=B7=D0=B8=D1=82=D1=8C=20=D0=B2?=
+ =?UTF-8?q?=D0=B8=D0=B4=D0=B6=D0=B5=D1=82=C2=BB),=20=C2=AB=D0=9A=D0=B0?=
+ =?UTF-8?q?=D0=BB=D0=B5=D0=BD=D0=B4=D0=B0=D1=80=D1=8C=20=D0=BD=D0=B0=20?=
+ =?UTF-8?q?=D0=BC=D0=B5=D1=81=D1=8F=D1=86=C2=BB=20entry?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The big calendar never loaded: android.view.View and Space aren't @RemoteView classes.
+Generated again by scripts-claude/cal_layouts.py with FrameLayouts and a sample month for
+the widget list's preview. A second provider places the same widget 4 x 2 from the list.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I1363dca52dfda1620d6a848ae3f0d716fbe798ec
+---
+ app/src/main/AndroidManifest.xml              | 11 +++
+ .../widget/BlueOSCalendarWidgetProvider.java  | 25 ++++++
+ .../widget/BlueOSDateWidgetProvider.java      | 14 +++-
+ app/src/main/res/layout/blueos_cal_grid.xml   | 77 +++++++++++++++----
+ .../main/res/layout/blueos_cal_grid_small.xml | 77 +++++++++++++++----
+ .../res/layout/blueos_month_wide_widget.xml   |  8 +-
+ .../layout/blueos_month_wide_widget_small.xml |  8 +-
+ .../main/res/layout/blueos_month_widget.xml   |  3 +-
+ .../res/layout/blueos_month_widget_small.xml  |  3 +-
+ app/src/main/res/values-ru/blueos_strings.xml | 12 +++
+ app/src/main/res/values/blueos_strings.xml    | 12 +++
+ .../res/xml/blueos_calendar_widget_info.xml   | 15 ++++
+ 12 files changed, 234 insertions(+), 31 deletions(-)
+ create mode 100644 app/src/main/java/com/android/calendar/widget/BlueOSCalendarWidgetProvider.java
+ create mode 100644 app/src/main/res/xml/blueos_calendar_widget_info.xml
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 9202a323..1990c333 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -314,6 +314,17 @@
+                 android:resource="@xml/blueos_date_widget_info" />
+         </receiver>
+ 
++        <!-- BlueOS 0.9 «Month calendar»: the same widget, placed big from the widget list -->
++        <receiver android:name="com.android.calendar.widget.BlueOSCalendarWidgetProvider"
++            android:exported="true"
++            android:label="@string/blueos_calendar_widget">
++            <intent-filter>
++                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
++            </intent-filter>
++            <meta-data android:name="android.appwidget.provider"
++                android:resource="@xml/blueos_calendar_widget_info" />
++        </receiver>
++
+         <!-- BlueOS countdown widget and its setup -->
+         <receiver android:name="com.android.calendar.widget.BlueOSCountdownWidgetProvider"
+             android:exported="true"
+diff --git a/app/src/main/java/com/android/calendar/widget/BlueOSCalendarWidgetProvider.java b/app/src/main/java/com/android/calendar/widget/BlueOSCalendarWidgetProvider.java
+new file mode 100644
+index 00000000..ea24ba9e
+--- /dev/null
++++ b/app/src/main/java/com/android/calendar/widget/BlueOSCalendarWidgetProvider.java
+@@ -0,0 +1,25 @@
++/*
++ * Copyright (C) 2026 BlueOS
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.calendar.widget;
++
++/**
++ * BlueOS 0.9 «Календарь на месяц»: the «Date and calendar» widget with an entry of its own in the widget list, placed
++ * 4 × 2 (the month) from the start — the user looked for the big calendar in the list and didn't think of stretching
++ * the date. Same layouts by size, same updates (BlueOSDateWidgetProvider updates the widgets of both).
++ */
++public class BlueOSCalendarWidgetProvider extends BlueOSDateWidgetProvider {
++}
+diff --git a/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java b/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java
+index d488916b..4309b1d8 100644
+--- a/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java
++++ b/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java
+@@ -148,10 +148,20 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
+                 || Intent.ACTION_LOCALE_CHANGED.equals(action)) {
+             final AppWidgetManager wm = AppWidgetManager.getInstance(context);
+-            onUpdate(context, wm, wm.getAppWidgetIds(new ComponentName(context, getClass())));
++            onUpdate(context, wm, allIds(context, wm));
+         }
+     }
+ 
++    /** 0.9: the widgets of both entries («Дата и календарь» and «Календарь на месяц»): paging, refresh and style
++     * changes come to this class and must reach the big ones too. */
++    private static int[] allIds(Context context, AppWidgetManager wm) {
++        final int[] a = wm.getAppWidgetIds(new ComponentName(context, BlueOSDateWidgetProvider.class));
++        final int[] b = wm.getAppWidgetIds(new ComponentName(context, BlueOSCalendarWidgetProvider.class));
++        final int[] out = java.util.Arrays.copyOf(a, a.length + b.length);
++        System.arraycopy(b, 0, out, a.length, b.length);
++        return out;
++    }
++
+     @Override
+     public void onUpdate(Context context, AppWidgetManager wm, int[] widgetIds) {
+         if (widgetIds.length == 0) {
+@@ -186,6 +196,8 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+ 
+     @Override
+     public void onDisabled(Context context) {
++        // the other entry's widgets still need the refresh
++        if (allIds(context, AppWidgetManager.getInstance(context)).length > 0) return;
+         context.getSystemService(AlarmManager.class).cancel(refreshIntent(context));
+     }
+ 
+diff --git a/app/src/main/res/layout/blueos_cal_grid.xml b/app/src/main/res/layout/blueos_cal_grid.xml
+index a8ca9630..52d360c9 100644
+--- a/app/src/main/res/layout/blueos_cal_grid.xml
++++ b/app/src/main/res/layout/blueos_cal_grid.xml
+@@ -15,6 +15,7 @@
+         android:orientation="horizontal">
+         <TextView
+             android:id="@+id/blueos_cal_month"
++            android:text="@string/blueos_cal_preview_month"
+             android:layout_width="0dp"
+             android:layout_height="match_parent"
+             android:layout_weight="1"
+@@ -52,6 +53,7 @@
+         android:orientation="horizontal">
+         <TextView
+             android:id="@+id/blueos_cal_wd0"
++            android:text="@string/blueos_cal_preview_wd0"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -62,6 +64,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd1"
++            android:text="@string/blueos_cal_preview_wd1"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -72,6 +75,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd2"
++            android:text="@string/blueos_cal_preview_wd2"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -82,6 +86,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd3"
++            android:text="@string/blueos_cal_preview_wd3"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -92,6 +97,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd4"
++            android:text="@string/blueos_cal_preview_wd4"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -102,6 +108,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd5"
++            android:text="@string/blueos_cal_preview_wd5"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -112,6 +119,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd6"
++            android:text="@string/blueos_cal_preview_wd6"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -150,6 +158,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="1"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -177,6 +186,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="2"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -204,6 +214,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="3"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -231,6 +242,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="4"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -258,6 +270,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="5"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -285,6 +298,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="6"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -312,6 +326,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="7"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -347,6 +362,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="8"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -374,6 +390,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="9"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -401,6 +418,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="10"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -428,6 +446,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="11"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -455,7 +474,9 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="12"
++                    android:background="@drawable/blueos_cal_today"
++                    android:textColor="@color/blueos_widget_on_primary"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e11"
+@@ -482,6 +503,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="13"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -509,6 +531,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="14"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -544,6 +567,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="15"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -571,6 +595,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="16"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -598,6 +623,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="17"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -625,6 +651,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="18"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -652,6 +679,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="19"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -679,6 +707,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="20"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -706,6 +735,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="21"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -741,6 +771,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="22"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -768,6 +799,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="23"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -795,6 +827,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="24"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -822,6 +855,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="25"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -849,6 +883,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="26"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -876,6 +911,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="27"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -903,6 +939,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="28"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -938,6 +975,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="29"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -965,6 +1003,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="30"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="13sp" />
+                 <ImageView
+@@ -992,7 +1031,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="1"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e30"
+@@ -1019,7 +1059,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="2"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e31"
+@@ -1046,7 +1087,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="3"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e32"
+@@ -1073,7 +1115,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="4"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e33"
+@@ -1100,7 +1143,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="5"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e34"
+@@ -1135,7 +1179,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e35"
+@@ -1162,7 +1207,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e36"
+@@ -1189,7 +1235,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e37"
+@@ -1216,7 +1263,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e38"
+@@ -1243,7 +1291,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e39"
+@@ -1270,7 +1319,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e40"
+@@ -1297,7 +1347,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="13sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e41"
+diff --git a/app/src/main/res/layout/blueos_cal_grid_small.xml b/app/src/main/res/layout/blueos_cal_grid_small.xml
+index b41198ee..7996d402 100644
+--- a/app/src/main/res/layout/blueos_cal_grid_small.xml
++++ b/app/src/main/res/layout/blueos_cal_grid_small.xml
+@@ -15,6 +15,7 @@
+         android:orientation="horizontal">
+         <TextView
+             android:id="@+id/blueos_cal_month"
++            android:text="@string/blueos_cal_preview_month"
+             android:layout_width="0dp"
+             android:layout_height="match_parent"
+             android:layout_weight="1"
+@@ -52,6 +53,7 @@
+         android:orientation="horizontal">
+         <TextView
+             android:id="@+id/blueos_cal_wd0"
++            android:text="@string/blueos_cal_preview_wd0"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -62,6 +64,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd1"
++            android:text="@string/blueos_cal_preview_wd1"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -72,6 +75,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd2"
++            android:text="@string/blueos_cal_preview_wd2"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -82,6 +86,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd3"
++            android:text="@string/blueos_cal_preview_wd3"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -92,6 +97,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd4"
++            android:text="@string/blueos_cal_preview_wd4"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -102,6 +108,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd5"
++            android:text="@string/blueos_cal_preview_wd5"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -112,6 +119,7 @@
+             android:textSize="11sp" />
+         <TextView
+             android:id="@+id/blueos_cal_wd6"
++            android:text="@string/blueos_cal_preview_wd6"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+@@ -150,6 +158,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="1"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -177,6 +186,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="2"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -204,6 +214,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="3"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -231,6 +242,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="4"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -258,6 +270,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="5"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -285,6 +298,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="6"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -312,6 +326,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="7"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -347,6 +362,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="8"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -374,6 +390,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="9"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -401,6 +418,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="10"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -428,6 +446,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="11"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -455,7 +474,9 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="12"
++                    android:background="@drawable/blueos_cal_today"
++                    android:textColor="@color/blueos_widget_on_primary"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e11"
+@@ -482,6 +503,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="13"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -509,6 +531,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="14"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -544,6 +567,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="15"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -571,6 +595,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="16"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -598,6 +623,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="17"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -625,6 +651,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="18"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -652,6 +679,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="19"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -679,6 +707,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="20"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -706,6 +735,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="21"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -741,6 +771,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="22"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -768,6 +799,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="23"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -795,6 +827,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="24"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -822,6 +855,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="25"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -849,6 +883,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="26"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -876,6 +911,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="27"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -903,6 +939,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="28"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -938,6 +975,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="29"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -965,6 +1003,7 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
++                    android:text="30"
+                     android:textColor="@color/blueos_widget_on_surface"
+                     android:textSize="12sp" />
+                 <ImageView
+@@ -992,7 +1031,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="1"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e30"
+@@ -1019,7 +1059,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="2"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e31"
+@@ -1046,7 +1087,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="3"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e32"
+@@ -1073,7 +1115,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="4"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e33"
+@@ -1100,7 +1143,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    android:text="5"
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e34"
+@@ -1135,7 +1179,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e35"
+@@ -1162,7 +1207,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e36"
+@@ -1189,7 +1235,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e37"
+@@ -1216,7 +1263,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e38"
+@@ -1243,7 +1291,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e39"
+@@ -1270,7 +1319,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e40"
+@@ -1297,7 +1347,8 @@
+                     android:gravity="center"
+                     android:includeFontPadding="false"
+                     android:singleLine="true"
+-                    android:textColor="@color/blueos_widget_on_surface"
++                    
++                    android:textColor="@color/blueos_widget_faint"
+                     android:textSize="12sp" />
+                 <ImageView
+                     android:id="@+id/blueos_cal_e41"
+diff --git a/app/src/main/res/layout/blueos_month_wide_widget.xml b/app/src/main/res/layout/blueos_month_wide_widget.xml
+index d7d76aa2..91507ec6 100644
+--- a/app/src/main/res/layout/blueos_month_wide_widget.xml
++++ b/app/src/main/res/layout/blueos_month_wide_widget.xml
+@@ -42,6 +42,8 @@
+                     android:orientation="horizontal">
+                     <TextClock
+                         android:id="@+id/blueos_day"
++                        android:format12Hour="d"
++                        android:format24Hour="d"
+                         android:layout_width="wrap_content"
+                         android:layout_height="wrap_content"
+                         android:fontFamily="blueos-clock"
+@@ -57,6 +59,8 @@
+                         android:orientation="vertical">
+                         <TextClock
+                             android:id="@+id/blueos_weekday"
++                            android:format12Hour="EEEE"
++                            android:format24Hour="EEEE"
+                             android:layout_width="match_parent"
+                             android:layout_height="wrap_content"
+                             android:ellipsize="end"
+@@ -66,6 +70,8 @@
+                             android:textSize="13sp" />
+                         <TextClock
+                             android:id="@+id/blueos_month"
++                            android:format12Hour="LLLL"
++                            android:format24Hour="LLLL"
+                             android:layout_width="match_parent"
+                             android:layout_height="wrap_content"
+                             android:ellipsize="end"
+@@ -103,7 +109,7 @@
+                 <include layout="@layout/blueos_cal_events" />
+             </LinearLayout>
+ 
+-            <Space
++            <FrameLayout
+                 android:layout_width="14dp"
+                 android:layout_height="match_parent" />
+ 
+diff --git a/app/src/main/res/layout/blueos_month_wide_widget_small.xml b/app/src/main/res/layout/blueos_month_wide_widget_small.xml
+index 5c3220c3..2fa14fc8 100644
+--- a/app/src/main/res/layout/blueos_month_wide_widget_small.xml
++++ b/app/src/main/res/layout/blueos_month_wide_widget_small.xml
+@@ -42,6 +42,8 @@
+                     android:orientation="horizontal">
+                     <TextClock
+                         android:id="@+id/blueos_day"
++                        android:format12Hour="d"
++                        android:format24Hour="d"
+                         android:layout_width="wrap_content"
+                         android:layout_height="wrap_content"
+                         android:fontFamily="blueos-clock"
+@@ -57,6 +59,8 @@
+                         android:orientation="vertical">
+                         <TextClock
+                             android:id="@+id/blueos_weekday"
++                            android:format12Hour="EEEE"
++                            android:format24Hour="EEEE"
+                             android:layout_width="match_parent"
+                             android:layout_height="wrap_content"
+                             android:ellipsize="end"
+@@ -66,6 +70,8 @@
+                             android:textSize="13sp" />
+                         <TextClock
+                             android:id="@+id/blueos_month"
++                            android:format12Hour="LLLL"
++                            android:format24Hour="LLLL"
+                             android:layout_width="match_parent"
+                             android:layout_height="wrap_content"
+                             android:ellipsize="end"
+@@ -103,7 +109,7 @@
+                 <include layout="@layout/blueos_cal_events" />
+             </LinearLayout>
+ 
+-            <Space
++            <FrameLayout
+                 android:layout_width="14dp"
+                 android:layout_height="match_parent" />
+ 
+diff --git a/app/src/main/res/layout/blueos_month_widget.xml b/app/src/main/res/layout/blueos_month_widget.xml
+index 96d4e083..58ad89f3 100644
+--- a/app/src/main/res/layout/blueos_month_widget.xml
++++ b/app/src/main/res/layout/blueos_month_widget.xml
+@@ -33,7 +33,8 @@
+                 android:layout_width="match_parent"
+                 android:layout_height="0dp"
+                 android:layout_weight="1" />
+-            <View
++            <!-- (FrameLayout, not View / Space: a widget's RemoteViews inflate only @RemoteView classes) -->
++            <FrameLayout
+                 android:id="@+id/blueos_cal_divider"
+                 android:layout_width="match_parent"
+                 android:layout_height="1dp"
+diff --git a/app/src/main/res/layout/blueos_month_widget_small.xml b/app/src/main/res/layout/blueos_month_widget_small.xml
+index c2639183..2cb7a5ac 100644
+--- a/app/src/main/res/layout/blueos_month_widget_small.xml
++++ b/app/src/main/res/layout/blueos_month_widget_small.xml
+@@ -33,7 +33,8 @@
+                 android:layout_width="match_parent"
+                 android:layout_height="0dp"
+                 android:layout_weight="1" />
+-            <View
++            <!-- (FrameLayout, not View / Space: a widget's RemoteViews inflate only @RemoteView classes) -->
++            <FrameLayout
+                 android:id="@+id/blueos_cal_divider"
+                 android:layout_width="match_parent"
+                 android:layout_height="1dp"
+diff --git a/app/src/main/res/values-ru/blueos_strings.xml b/app/src/main/res/values-ru/blueos_strings.xml
+index 6ab88b33..8686f7b7 100644
+--- a/app/src/main/res/values-ru/blueos_strings.xml
++++ b/app/src/main/res/values-ru/blueos_strings.xml
+@@ -28,4 +28,16 @@
+         <item quantity="many">дней назад · <xliff:g id="date" example="6 нояб.">%1$s</xliff:g></item>
+         <item quantity="other">дня назад · <xliff:g id="date" example="6 нояб.">%1$s</xliff:g></item>
+     </plurals>
++    <!-- 0.9: the big one has its own entry in the widget list (the same widget, placed big) -->
++    <string name="blueos_calendar_widget">Календарь на месяц</string>
++    <string name="blueos_calendar_widget_description">Месяц, сегодняшняя дата и ближайшие события; сожмите — останется только дата</string>
++    <!-- the widget list's preview of the month (the widget itself shows the real one) -->
++    <string name="blueos_cal_preview_month">Ноябрь</string>
++    <string name="blueos_cal_preview_wd0">Пн</string>
++    <string name="blueos_cal_preview_wd1">Вт</string>
++    <string name="blueos_cal_preview_wd2">Ср</string>
++    <string name="blueos_cal_preview_wd3">Чт</string>
++    <string name="blueos_cal_preview_wd4">Пт</string>
++    <string name="blueos_cal_preview_wd5">Сб</string>
++    <string name="blueos_cal_preview_wd6">Вс</string>
+ </resources>
+diff --git a/app/src/main/res/values/blueos_strings.xml b/app/src/main/res/values/blueos_strings.xml
+index ecc016ea..61676588 100644
+--- a/app/src/main/res/values/blueos_strings.xml
++++ b/app/src/main/res/values/blueos_strings.xml
+@@ -28,4 +28,16 @@
+         <item quantity="one">day ago · <xliff:g id="date" example="6 Nov">%1$s</xliff:g></item>
+         <item quantity="other">days ago · <xliff:g id="date" example="6 Nov">%1$s</xliff:g></item>
+     </plurals>
++    <!-- 0.9: the big one has its own entry in the widget list (the same widget, placed big) -->
++    <string name="blueos_calendar_widget">Month calendar</string>
++    <string name="blueos_calendar_widget_description">The month, today\'s date and the next events; shrink it to keep just the date</string>
++    <!-- the widget list's preview of the month (the widget itself shows the real one) -->
++    <string name="blueos_cal_preview_month">November</string>
++    <string name="blueos_cal_preview_wd0">Mon</string>
++    <string name="blueos_cal_preview_wd1">Tue</string>
++    <string name="blueos_cal_preview_wd2">Wed</string>
++    <string name="blueos_cal_preview_wd3">Thu</string>
++    <string name="blueos_cal_preview_wd4">Fri</string>
++    <string name="blueos_cal_preview_wd5">Sat</string>
++    <string name="blueos_cal_preview_wd6">Sun</string>
+ </resources>
+diff --git a/app/src/main/res/xml/blueos_calendar_widget_info.xml b/app/src/main/res/xml/blueos_calendar_widget_info.xml
+new file mode 100644
+index 00000000..64c7e8f6
+--- /dev/null
++++ b/app/src/main/res/xml/blueos_calendar_widget_info.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 «Календарь на месяц»: the «Date and calendar» widget placed big from the start (4 × 2 cells) -->
++<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
++    android:description="@string/blueos_calendar_widget_description"
++    android:initialLayout="@layout/blueos_month_wide_widget"
++    android:minWidth="250dp"
++    android:minHeight="180dp"
++    android:minResizeWidth="110dp"
++    android:minResizeHeight="110dp"
++    android:previewLayout="@layout/blueos_month_wide_widget"
++    android:resizeMode="horizontal|vertical"
++    android:targetCellWidth="4"
++    android:targetCellHeight="2"
++    android:updatePeriodMillis="0"
++    android:widgetCategory="home_screen" />

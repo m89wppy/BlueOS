@@ -1,0 +1,343 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Fri, 13 Nov 2026 06:57:43 +0700
+Subject: [PATCH 16/18] =?UTF-8?q?BlueOS:=20Settings:=20=C2=AB=D0=91=D0=BB?=
+ =?UTF-8?q?=D0=B0=D0=B3=D0=BE=D0=B4=D0=B0=D1=80=D0=BD=D0=BE=D1=81=D1=82?=
+ =?UTF-8?q?=D0=B8=C2=BB=20in=20About=20phone,=20the=20list=20downloaded=20?=
+ =?UTF-8?q?from=20the=20public=20repository?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I22dc2e388a26e997fae8d9e440afb4cce8be7c8f
+---
+ AndroidManifest.xml                           |   7 +
+ res/values-ru/blueos_strings.xml              |  12 +
+ res/values/blueos_strings.xml                 |  12 +
+ res/xml/my_device_info.xml                    |  11 +
+ .../settings/blueos/BlueOSThanksActivity.kt   | 233 ++++++++++++++++++
+ 5 files changed, 275 insertions(+)
+ create mode 100755 src/com/android/settings/blueos/BlueOSThanksActivity.kt
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 81be50c5712..4ffa0a9d880 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -6324,6 +6324,13 @@
+             android:label="@string/blueos_assets_title"
+             android:theme="@android:style/Theme.DeviceDefault.DayNight" />
+ 
++        <!-- BlueOS 0.9: «Благодарности» (About phone), the list downloaded from the public repository -->
++        <activity
++            android:name=".blueos.BlueOSThanksActivity"
++            android:exported="false"
++            android:label="@string/blueos_thanks_title"
++            android:theme="@android:style/Theme.DeviceDefault.DayNight" />
++
+         <!-- This is the longest AndroidManifest.xml ever. -->
+ 
+     </application>
+diff --git a/res/values-ru/blueos_strings.xml b/res/values-ru/blueos_strings.xml
+index 651ffc7cf08..a3b2de0b465 100644
+--- a/res/values-ru/blueos_strings.xml
++++ b/res/values-ru/blueos_strings.xml
+@@ -106,4 +106,16 @@
+     <string name="blueos_assets_deleted_some">Удалено: <xliff:g id="count" example="3">%d</xliff:g>. Перезагрузите телефон.</string>
+     <string name="blueos_assets_again">Добавить ещё из «<xliff:g id="name" example="BlueOS-файлы.zip">%s</xliff:g>»</string>
+     <string name="blueos_assets_again_gone">Эту папку или архив больше не прочитать: их перенесли или удалили. Выберите заново.</string>
++    <!-- BlueOS 0.9: «Благодарности» -->
++    <string name="blueos_thanks_title">Благодарности</string>
++    <string name="blueos_thanks_summary">Люди, которые поддержали BlueOS и помогли ему</string>
++    <string name="blueos_thanks_intro">BlueOS делает один человек в свободное время. Эти люди поддержали проект или помогли сделать его лучше — спасибо им!</string>
++    <string name="blueos_thanks_donors">Поддержали проект</string>
++    <string name="blueos_thanks_helpers">Помогли</string>
++    <string name="blueos_thanks_support">Поддержать BlueOS</string>
++    <string name="blueos_thanks_support_row">Поддержать проект</string>
++    <string name="blueos_thanks_empty">Пока здесь пусто.</string>
++    <string name="blueos_thanks_updated">Список загружается из интернета, поэтому новые имена появляются без обновления телефона.</string>
++    <string name="blueos_thanks_offline">Нет интернета: показан список, сохранённый %1$s.</string>
++    <string name="blueos_thanks_failed">Не удалось загрузить список. Проверьте интернет и откройте страницу ещё раз.</string>
+ </resources>
+diff --git a/res/values/blueos_strings.xml b/res/values/blueos_strings.xml
+index a55f6bcfda3..a8870027f22 100644
+--- a/res/values/blueos_strings.xml
++++ b/res/values/blueos_strings.xml
+@@ -114,4 +114,16 @@
+     <string name="blueos_assets_deleted_some">Removed: <xliff:g id="count" example="3">%d</xliff:g>. Restart the phone.</string>
+     <string name="blueos_assets_again">Add more from “<xliff:g id="name" example="BlueOS files.zip">%s</xliff:g>”</string>
+     <string name="blueos_assets_again_gone">That folder or archive cannot be read any more (moved or deleted). Pick it again.</string>
++    <!-- BlueOS 0.9: «Благодарности» -->
++    <string name="blueos_thanks_title">Thanks</string>
++    <string name="blueos_thanks_summary">People who supported and helped BlueOS</string>
++    <string name="blueos_thanks_intro">BlueOS is made by one person in their free time. These people supported it or helped make it better — thank you!</string>
++    <string name="blueos_thanks_donors">Supported the project</string>
++    <string name="blueos_thanks_helpers">Helped</string>
++    <string name="blueos_thanks_support">Support BlueOS</string>
++    <string name="blueos_thanks_support_row">Support the project</string>
++    <string name="blueos_thanks_empty">The list is empty for now.</string>
++    <string name="blueos_thanks_updated">The list comes from the internet, so new names appear without updating the phone.</string>
++    <string name="blueos_thanks_offline">No internet: the list saved %1$s is shown.</string>
++    <string name="blueos_thanks_failed">Could not load the list. Check the internet connection and open this page again.</string>
+ </resources>
+diff --git a/res/xml/my_device_info.xml b/res/xml/my_device_info.xml
+index 0c758b5429e..649e9388da0 100644
+--- a/res/xml/my_device_info.xml
++++ b/res/xml/my_device_info.xml
+@@ -153,6 +153,17 @@
+             android:summary="@string/summary_placeholder"
+             settings:enableCopying="true"
+             settings:controller="com.android.settings.deviceinfo.firmwareversion.LineageVersionDetailPreferenceController"/>
++
++        <!-- BlueOS 0.9: people who supported / helped BlueOS (the list comes from the internet: no build needed) -->
++        <Preference
++            android:key="blueos_thanks"
++            android:order="44"
++            android:title="@string/blueos_thanks_title"
++            android:summary="@string/blueos_thanks_summary">
++            <intent
++                android:targetPackage="com.android.settings"
++                android:targetClass="com.android.settings.blueos.BlueOSThanksActivity"/>
++        </Preference>
+     </PreferenceCategory>
+ 
+     <PreferenceCategory
+diff --git a/src/com/android/settings/blueos/BlueOSThanksActivity.kt b/src/com/android/settings/blueos/BlueOSThanksActivity.kt
+new file mode 100755
+index 00000000000..f10777b9b57
+--- /dev/null
++++ b/src/com/android/settings/blueos/BlueOSThanksActivity.kt
+@@ -0,0 +1,233 @@
++/*
++ * SPDX-FileCopyrightText: BlueOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.settings.blueos
++
++import android.app.Activity
++import android.content.Intent
++import android.content.res.Configuration
++import android.graphics.Typeface
++import android.graphics.drawable.GradientDrawable
++import android.net.Uri
++import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
++import android.text.format.DateUtils
++import android.util.Log
++import android.util.TypedValue
++import android.view.Gravity
++import android.view.View
++import android.view.WindowInsets
++import android.widget.LinearLayout
++import android.widget.ProgressBar
++import android.widget.ScrollView
++import android.widget.TextView
++import com.android.settings.R
++import org.json.JSONObject
++import java.io.File
++import java.net.HttpURLConnection
++import java.net.URL
++import java.util.Locale
++
++/**
++ * BlueOS 0.9: «Благодарности» (About phone). The list is NOT in the build: it is `thanks.json` in the public repository
++ * (vendor/blueos), downloaded each time the page opens and kept in files/ for when there is no internet — adding a
++ * person needs only a push, no new build. The same file feeds THANKS.md (scripts/make-thanks.py) and the site's page.
++ *
++ * Format: {"people":[{"name":"…","kind":"donate"|"help","ru":"what they did","en":"…","link":"https://…"}],
++ *          "donate":{"url":"https://…","ru":"…","en":"…"}}  — "link", "donate" optional.
++ */
++class BlueOSThanksActivity : Activity() {
++
++    private lateinit var list: LinearLayout
++    private lateinit var status: TextView
++    private lateinit var progress: ProgressBar
++    private val main = Handler(Looper.getMainLooper())
++    private val cache by lazy { File(filesDir, "thanks.json") }
++    @Volatile private var gone = false
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setTitle(R.string.blueos_thanks_title)
++        val col = LinearLayout(this).apply {
++            orientation = LinearLayout.VERTICAL
++            setPadding(dp(16), dp(8), dp(16), dp(24))
++        }
++        col.addView(text(getString(R.string.blueos_thanks_intro), 16f, primary = false).apply {
++            setPadding(dp(8), dp(8), dp(8), dp(16))
++        })
++        progress = ProgressBar(this).apply { isIndeterminate = true }
++        col.addView(progress, LinearLayout.LayoutParams(dp(32), dp(32)).apply {
++            gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(16)
++        })
++        list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
++        col.addView(list)
++        status = text("", 13f, primary = false).apply { setPadding(dp(8), dp(16), dp(8), 0) }
++        col.addView(status)
++
++        val scroll = ScrollView(this).apply { addView(col) }
++        // edge to edge: keep clear of the status bar, the action bar, the navigation bar and the sides
++        val bar = TypedValue().let { tv ->
++            if (theme.resolveAttribute(android.R.attr.actionBarSize, tv, true))
++                TypedValue.complexToDimensionPixelSize(tv.data, resources.displayMetrics) else 0
++        }
++        scroll.setOnApplyWindowInsetsListener { v, insets ->
++            val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
++            v.setPadding(i.left, i.top + bar, i.right, i.bottom)
++            insets
++        }
++        scroll.clipToPadding = false
++        setContentView(scroll)
++
++        // the saved list right away, then the fresh one
++        val saved = read(cache)
++        if (saved != null) show(saved)
++        Thread {
++            val fresh = download()
++            main.post {
++                if (gone) return@post
++                progress.visibility = View.GONE
++                when {
++                    fresh != null -> {
++                        show(fresh)
++                        status.text = getString(R.string.blueos_thanks_updated)
++                    }
++                    saved != null -> status.text = getString(R.string.blueos_thanks_offline,
++                        DateUtils.getRelativeTimeSpanString(cache.lastModified()))
++                    else -> status.text = getString(R.string.blueos_thanks_failed)
++                }
++            }
++        }.start()
++    }
++
++    override fun onDestroy() {
++        gone = true
++        super.onDestroy()
++    }
++
++    private fun download(): JSONObject? = try {
++        val c = URL(URL_THANKS).openConnection() as HttpURLConnection
++        c.connectTimeout = 8000
++        c.readTimeout = 8000
++        c.useCaches = false
++        try {
++            if (c.responseCode != 200) null
++            else {
++                val body = c.inputStream.use { it.readBytes() }
++                val json = JSONObject(String(body))
++                json.getJSONArray("people")                       // a broken file isn't saved over a good one
++                cache.writeBytes(body)
++                json
++            }
++        } finally { c.disconnect() }
++    } catch (e: Exception) {
++        Log.w(TAG, "thanks list: ${e.javaClass.simpleName}: ${e.message}")
++        null
++    }
++
++    private fun read(f: File): JSONObject? = try {
++        if (f.exists()) JSONObject(f.readText()) else null
++    } catch (e: Exception) { null }
++
++    // ------------------------------------------------------------------ ui
++
++    private fun show(json: JSONObject) {
++        list.removeAllViews()
++        val ru = Locale.getDefault().language == "ru"
++        val people = json.optJSONArray("people")
++        val donors = ArrayList<JSONObject>()
++        val helpers = ArrayList<JSONObject>()
++        for (i in 0 until (people?.length() ?: 0)) {
++            val p = people!!.optJSONObject(i) ?: continue
++            if (p.optString("name").isBlank()) continue
++            if (p.optString("kind") == "donate") donors += p else helpers += p
++        }
++        if (donors.isEmpty() && helpers.isEmpty()) {
++            list.addView(text(getString(R.string.blueos_thanks_empty), 15f, primary = false).apply {
++                setPadding(dp(8), 0, dp(8), dp(16))
++            })
++        }
++        group(R.string.blueos_thanks_donors, donors.map { row(it, ru) })
++        group(R.string.blueos_thanks_helpers, helpers.map { row(it, ru) })
++        json.optJSONObject("donate")?.let { d ->
++            val url = d.optString("url")
++            if (url.startsWith("https://")) {
++                val sub = d.optString(if (ru) "ru" else "en").ifBlank { null }
++                group(R.string.blueos_thanks_support, listOf(row(getString(R.string.blueos_thanks_support_row), sub, url)))
++            }
++        }
++    }
++
++    private fun row(p: JSONObject, ru: Boolean): View {
++        val what = p.optString(if (ru) "ru" else "en").ifBlank { p.optString(if (ru) "en" else "ru") }.ifBlank { null }
++        return row(p.optString("name"), what, p.optString("link").takeIf { it.startsWith("https://") })
++    }
++
++    private fun row(title: String, summary: String?, link: String?): View =
++        LinearLayout(this).apply {
++            orientation = LinearLayout.VERTICAL
++            setPadding(dp(16), dp(14), dp(16), dp(14))
++            minimumHeight = dp(64)
++            gravity = Gravity.CENTER_VERTICAL
++            addView(text(title, 18f, primary = true))
++            if (summary != null) addView(text(summary, 14f, primary = false))
++            if (link != null) {
++                isClickable = true
++                isFocusable = true
++                foreground = getDrawable(TypedValue().also {
++                    theme.resolveAttribute(android.R.attr.selectableItemBackground, it, true)
++                }.resourceId)
++                setOnClickListener {
++                    try {
++                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
++                    } catch (e: Exception) { Log.w(TAG, "no app for $link") }
++                }
++            }
++        }
++
++    /** Android 17 Settings groups: a title, then rows on one card colour — 24 dp outer, 4 dp inner corners. */
++    private fun group(title: Int, rows: List<View>) {
++        if (rows.isEmpty()) return
++        list.addView(text(getString(title), 14f, primary = true).apply {
++            setTextColor(color(android.R.color.system_primary_light, android.R.color.system_primary_dark))
++            typeface = Typeface.create(typeface, Typeface.BOLD)
++            setPadding(dp(8), dp(16), dp(8), dp(8))
++        })
++        val card = color(android.R.color.system_surface_bright_light, android.R.color.system_surface_bright_dark)
++        rows.forEachIndexed { i, r ->
++            val big = dp(24).toFloat()
++            val small = dp(4).toFloat()
++            val top = if (i == 0) big else small
++            val bottom = if (i == rows.size - 1) big else small
++            r.background = GradientDrawable().apply {
++                setColor(card)
++                cornerRadii = floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom)
++            }
++            r.clipToOutline = true
++            list.addView(r, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
++                LinearLayout.LayoutParams.WRAP_CONTENT).apply { if (i > 0) topMargin = dp(2) })
++        }
++    }
++
++    private fun text(s: String, sp: Float, primary: Boolean) = TextView(this).apply {
++        text = s
++        setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
++        setTextColor(if (primary) color(android.R.color.system_on_surface_light, android.R.color.system_on_surface_dark)
++            else color(android.R.color.system_on_surface_variant_light, android.R.color.system_on_surface_variant_dark))
++    }
++
++    private fun dark() =
++        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
++
++    private fun color(light: Int, dark: Int) = getColor(if (dark()) dark else light)
++
++    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
++
++    companion object {
++        private const val TAG = "BlueOSThanks"
++        /** the public repository's list (vendor/blueos/thanks.json, branch main) */
++        const val URL_THANKS = "https://raw.githubusercontent.com/GDmio/BlueOS/main/thanks.json"
++    }
++}

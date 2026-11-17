@@ -1,0 +1,128 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Wed, 11 Nov 2026 08:59:03 +0700
+Subject: [PATCH 34/42] BlueOS: SystemUI: equalizers redraw together at 30 fps,
+ the narrow equalizer widget loads, no crash on a second tile activation
+
+BlueOSVisualizerView: one Choreographer tick for every running equalizer, every other frame.
+blueos_eq_widget_full_narrow: RemoteViews refuses a plain <View>, the spacer is a FrameLayout.
+ExclusiveActivatable: activate() waits for the previous activation (TileHapticsViewModel crashed 5 times).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ib2be5335cb01c3b4dfd001ad2b07a9fdde5def12
+---
+ .../android/widget/BlueOSVisualizerView.java  | 32 ++++++++++++++++++-
+ .../lifecycle/src/api/ExclusiveActivatable.kt | 24 ++++++++++----
+ .../layout/blueos_eq_widget_full_narrow.xml   |  3 +-
+ 3 files changed, 50 insertions(+), 9 deletions(-)
+
+diff --git a/core/java/android/widget/BlueOSVisualizerView.java b/core/java/android/widget/BlueOSVisualizerView.java
+index f2a6d9d53c93..d547d1c04f99 100644
+--- a/core/java/android/widget/BlueOSVisualizerView.java
++++ b/core/java/android/widget/BlueOSVisualizerView.java
+@@ -179,6 +179,7 @@ public class BlueOSVisualizerView extends View {
+     public void onVisibilityAggregated(boolean isVisible) {
+         super.onVisibilityAggregated(isVisible);
+         mVisible = isVisible;
++        if (!isVisible) sRunning.remove(this);
+         updateRunning();
+     }
+ 
+@@ -186,6 +187,7 @@ public class BlueOSVisualizerView extends View {
+     protected void onDetachedFromWindow() {
+         super.onDetachedFromWindow();
+         mVisible = false;
++        sRunning.remove(this);
+         updateRunning();
+     }
+ 
+@@ -342,8 +344,36 @@ public class BlueOSVisualizerView extends View {
+         }
+ 
+         if (running || moving) {
+-            postInvalidateOnAnimation();
++            sRunning.add(this);
++            tick();
++        } else {
++            sRunning.remove(this);
++        }
++    }
++
++    // BlueOS 0.9 speed: with music every equalizer redrew the whole home screen 60 times a second (with three on
++    // the screen, at different moments). Now they all redraw together on every second frame — 30 fps; the motion
++    // is computed from the time between frames, so it moves the same.
++    private static final java.util.Set<BlueOSVisualizerView> sRunning = new android.util.ArraySet<>();
++    private static boolean sTickPosted;
++    private static boolean sOddFrame;
++    private static final android.view.Choreographer.FrameCallback sTick = new android.view.Choreographer.FrameCallback() {
++        @Override
++        public void doFrame(long frameTimeNanos) {
++            sTickPosted = false;
++            if (sRunning.isEmpty()) return;
++            sOddFrame = !sOddFrame;
++            if (sOddFrame) {
++                for (BlueOSVisualizerView v : new java.util.ArrayList<>(sRunning)) v.invalidate();
++            }
++            tick();
+         }
++    };
++
++    private static void tick() {
++        if (sTickPosted || sRunning.isEmpty()) return;
++        sTickPosted = true;
++        android.view.Choreographer.getInstance().postFrameCallback(sTick);
+     }
+ 
+     private int currentColor() {
+diff --git a/packages/SystemUI/pods/lifecycle/src/api/ExclusiveActivatable.kt b/packages/SystemUI/pods/lifecycle/src/api/ExclusiveActivatable.kt
+index ad2dcb4eaaed..aeba04e877f6 100644
+--- a/packages/SystemUI/pods/lifecycle/src/api/ExclusiveActivatable.kt
++++ b/packages/SystemUI/pods/lifecycle/src/api/ExclusiveActivatable.kt
+@@ -34,16 +34,26 @@ abstract class ExclusiveActivatable : Activatable {
+             _isActive.set(value)
+         }
+ 
+-    final override suspend fun activate(): Nothing {
+-        val allowed = _isActive.compareAndSet(false, true)
+-        check(allowed) { "Cannot activate an already active ExclusiveActivatable! $this" }
++    // BlueOS 0.9: a quick settings tile that moves (Compose restarts its effect) activated its haptics model again
++    // while the old activation was still being cancelled — the check below crashed the whole SystemUI (5 times in
++    // one afternoon, 2026-11-10). The new activation now waits until the old one has ended.
++    private val blueOSTurn = kotlinx.coroutines.sync.Mutex()
+ 
++    final override suspend fun activate(): Nothing {
++        blueOSTurn.lock()
+         try {
+-            onActivated()
+-            awaitCancellation()
++            val allowed = _isActive.compareAndSet(false, true)
++            check(allowed) { "Cannot activate an already active ExclusiveActivatable! $this" }
++
++            try {
++                onActivated()
++                awaitCancellation()
++            } finally {
++                isActive = false
++                onDeactivated()
++            }
+         } finally {
+-            isActive = false
+-            onDeactivated()
++            blueOSTurn.unlock()
+         }
+     }
+ 
+diff --git a/packages/SystemUI/res/layout/blueos_eq_widget_full_narrow.xml b/packages/SystemUI/res/layout/blueos_eq_widget_full_narrow.xml
+index 926cd4747ab8..221be8bec774 100644
+--- a/packages/SystemUI/res/layout/blueos_eq_widget_full_narrow.xml
++++ b/packages/SystemUI/res/layout/blueos_eq_widget_full_narrow.xml
+@@ -57,7 +57,8 @@
+                         android:visibility="gone" />
+                 </FrameLayout>
+ 
+-                <View
++                <!-- a spacer: widgets may not use a plain View (the launcher refused the whole layout) -->
++                <FrameLayout
+                     android:layout_width="0dp"
+                     android:layout_height="1dp"
+                     android:layout_weight="1" />

@@ -1,0 +1,199 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Fri, 13 Nov 2026 12:22:18 +0700
+Subject: [PATCH 40/42] BlueOS: jelly bends the scene with the weather; a jelly
+ drag owns the gesture
+
+The moving jelly was drawn from the plain picture over the weather: the haze vanished in its areas while they moved
+(the glass widgets over them looked broken). Now the scene is drawn through the jelly as a RenderEffect.
+A finger that comes down on a jelly area and moves takes the gesture, like patting the character: no shade,
+bouncer, page swipe, all apps or long press (lock screen: shade window; home: DragLayer with blueos_wall_jelly_view).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I5fe9830016a216956df97ab267535d2e5e744f31
+---
+ .../wallpaper/BlueOSWallpaperWeather.kt       | 94 ++++++++++++++-----
+ ...NotificationShadeWindowViewController.java | 10 ++
+ 2 files changed, 80 insertions(+), 24 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+index 09c49e0d7230..838a744d288c 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+@@ -166,10 +166,47 @@ class BlueOSWallpaperWeather(
+         (if (locked) jellyCfg.lock else jellyCfg.home)
+ 
+     /** 0.9: the crop of the picture the system shows for this screen (ImageWallpaper, with the picture). */
+-    fun setScreenCrop(crop: Rect?) { screenCrop = crop }
++    fun setScreenCrop(crop: Rect?) { screenCrop = crop; handler.post { publishHome() } }
+ 
+     /** 0.9: the wallpaper's offset from the launcher (ImageWallpaper.onOffsetsChanged). */
+-    fun setOffset(x: Float) { xOffset = x }
++    fun setOffset(x: Float) { xOffset = x; handler.post { publishHome() } }
++
++    private var published: String? = null
++
++    /**
++     * The home screen's picture part for the launcher ([BlueOSJelly.VIEW_KEY]): it decides on a finger's down
++     * whether the jelly takes the gesture. Only from the engine showing the home screen; written only on a change.
++     */
++    private fun publishHome() {
++        if (!visible || locked) return
++        val sim = synchronized(lock) { jellySim?.takeIf { jellyActive() } }
++        val v = if (sim == null) "" else {
++            val part = screenPart() ?: android.graphics.RectF(0f, 0f, sim.w, sim.h)
++            "$jellyKey|${sim.w}|${sim.h}|${part.left}|${part.top}|${part.right}|${part.bottom}"
++        }
++        if (v == published) return
++        published = v
++        try { android.provider.Settings.Secure.putString(cr, BlueOSJelly.VIEW_KEY, v) } catch (e: RuntimeException) { Log.w(TAG, "jelly view", e) }
++    }
++
++    /** Screen px -> picture px of [sim] (the part of the picture on the screen). Under [lock]. */
++    private fun toPic(x: Float, y: Float, sim: BlueOSJelly.Sim): FloatArray {
++        val part = screenPart()
++        return if (part != null) {
++            floatArrayOf(part.left + x / screenSize.x * part.width(), part.top + y / screenSize.y * part.height())
++        } else {
++            @Suppress("DEPRECATION") context.display?.getRealSize(screenSize)
++            floatArrayOf(x * sim.w / screenSize.x.coerceAtLeast(1), y * sim.h / screenSize.y.coerceAtLeast(1))
++        }
++    }
++
++    /** The lock screen asks on a finger's down whether it is on an area (main thread). */
++    private fun lockHit(x: Float, y: Float): Boolean = synchronized(lock) {
++        val sim = jellySim ?: return false
++        if (!visible || !locked || !jellyActive()) return false
++        val p = toPic(x, y, sim)
++        sim.hit(p[0], p[1])
++    }
+ 
+     /**
+      * The part of the picture on the screen now, picture px; null = unknown (the whole picture's width is taken as
+@@ -201,6 +238,7 @@ class BlueOSWallpaperWeather(
+         Log.i(TAG, "jelly: pic=$jellyKey on=${jellyCfg.on} still=$jellyStill lock=${jellyCfg.lock} home=${jellyCfg.home} " +
+             "areas=${areas.size} picture=${src?.width}x${src?.height} screen=${screenPart()} ready=${jellySim != null}")
+         updateSensor()
++        publishHome()
+     }
+ 
+     /** The phone's own acceleration — only while the jelly can show it (the wallpaper visible, the screen on). */
+@@ -236,17 +274,9 @@ class BlueOSWallpaperWeather(
+         val started = synchronized(lock) {
+             val sim = jellySim ?: return
+             if (!jellyActive() || fromLock != locked) { sim.up(); return }
+-            val part = screenPart()
+-            val px: Float
+-            val py: Float
+-            if (part != null) {
+-                px = part.left + x / screenSize.x * part.width()
+-                py = part.top + y / screenSize.y * part.height()
+-            } else {
+-                @Suppress("DEPRECATION") context.display?.getRealSize(screenSize)
+-                px = x * sim.w / screenSize.x.coerceAtLeast(1)
+-                py = y * sim.h / screenSize.y.coerceAtLeast(1)
+-            }
++            val p = toPic(x, y, sim)
++            val px = p[0]
++            val py = p[1]
+             when (action) {
+                 android.view.MotionEvent.ACTION_DOWN -> !blocked && sim.down(px, py)
+                 android.view.MotionEvent.ACTION_MOVE -> { sim.move(px, py); false }
+@@ -266,15 +296,6 @@ class BlueOSWallpaperWeather(
+         handler.post { jellyTouch(a, x.toFloat(), y.toFloat(), fromLock = false, blocked = false) }
+     }
+ 
+-    /** The jelly over the scene while it moves (at rest the picture underneath is the same). Under [lock]. */
+-    private fun drawJelly(canvas: Canvas) {
+-        val s = jellySim ?: return
+-        if (!s.moving || !jellyActive()) return
+-        val pic = shown ?: sharp ?: return
+-        dst.set(0, 0, canvas.width, canvas.height)
+-        jellyRenderer.draw(canvas, pic, dst, s)
+-    }
+-
+     // «Эквалайзер на обоях», read once per change (not per frame)
+     private val beat = org.blueos.arona.BlueOSBeat
+     @Volatile private var eqWhere = 0
+@@ -362,6 +383,7 @@ class BlueOSWallpaperWeather(
+             Log.w(TAG, "jelly poke receiver", e)
+         }
+         // the lock screen's fingers: whether one is on the character / under the lobby is asked right away (main thread)
++        unobserve += BlueOSJelly.LockTouch.addHit(::lockHit)
+         unobserve += BlueOSJelly.LockTouch.add { a, x, y ->
+             val lobby = com.android.systemui.blueos.lobby.BlueOSLobby.isOpen
+             val blocked = lobby || (a == android.view.MotionEvent.ACTION_DOWN && BlueOSJelly.LockTouch.blocked?.invoke(x, y) == true)
+@@ -430,6 +452,7 @@ class BlueOSWallpaperWeather(
+             updateSensor()
+             updateRunning()
+             if (!running) render(::drawFrame)
++            publishHome()
+         }
+     }
+ 
+@@ -439,6 +462,7 @@ class BlueOSWallpaperWeather(
+             if (!v) finishFade()
+             updateSensor()
+             updateRunning()
++            publishHome()
+         }
+     }
+ 
+@@ -704,12 +728,34 @@ class BlueOSWallpaperWeather(
+      * mixes the two looks; with weather the effect switches its picture halfway, so the weather never blinks out.
+      */
+     private fun drawFrame(canvas: Canvas) = synchronized(lock) {
+-        if (drawScene(canvas)) {
+-            drawJelly(canvas)
++        if (jellyOnScene(canvas) || drawScene(canvas)) {
+             if (eqHere()) drawEq(canvas)
+         }
+     }
+ 
++    private var jellyNode: RenderNode? = null
++
++    /**
++     * The scene (picture + weather) drawn through the jelly while it moves, so the weather's haze moves with it
++     * (2026-11-13: drawn over the scene from the plain picture, the haze vanished in the moving areas). False =
++     * nothing moves (or no hardware canvas): draw the scene as is. Under [lock].
++     */
++    private fun jellyOnScene(canvas: Canvas): Boolean {
++        val s = jellySim ?: return false
++        if (!s.moving || !jellyActive() || !canvas.isHardwareAccelerated) return false
++        val w = canvas.width
++        val h = canvas.height
++        val fx = jellyRenderer.effect(s, w, h) ?: return false
++        val node = jellyNode ?: RenderNode("BlueOSJelly").also { jellyNode = it }
++        node.setPosition(0, 0, w, h)
++        val rc = node.beginRecording(w, h)
++        val drawn = try { drawScene(rc) } finally { node.endRecording() }
++        if (!drawn) return false
++        node.setRenderEffect(fx)
++        canvas.drawRenderNode(node)
++        return true
++    }
++
+     /** The weather's current frame (no equalizer) as a hardware bitmap, or null; see [held]. */
+     private fun snapshot(): Bitmap? = try {
+         val w = size.width.toInt()
+diff --git a/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java b/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
+index aa09b62c6a1a..735a8affc053 100644
+--- a/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
+@@ -432,6 +432,16 @@ public class NotificationShadeWindowViewController implements Dumpable {
+                                 NotificationShadeWindowViewController.this::cancelCurrentTouch)) {
+                     return logDownOrFalseResultDispatch(ev, "dispatched to the BlueOS lobby", true);
+                 }
++                // BlueOS 0.9 «Желе на обоях»: a finger dragging an area owns the gesture (like patting the
++                // character): the shade / bouncer get a cancel, the jelly gets the moves
++                if (!SceneContainerFlag.isEnabled() && !mHandlingExternalTouch
++                        && mStatusBarStateController.getState() == KEYGUARD
++                        && !mStatusBarStateController.isDozing()
++                        && org.blueos.arona.BlueOSJelly.LockTouch.claim(ev,
++                                3f * mView.getResources().getDisplayMetrics().density,
++                                NotificationShadeWindowViewController.this::cancelCurrentTouch)) {
++                    return logDownOrFalseResultDispatch(ev, "dispatched to the BlueOS jelly", true);
++                }
+                 if (mTouchCancelled) {
+                     return logDownOrFalseResultDispatch(ev, "touch cancelled", false);
+                 }

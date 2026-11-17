@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Tue, 10 Nov 2026 14:21:19 +0700
+Subject: [PATCH 16/23] =?UTF-8?q?BlueOS:=20Launcher3:=20chibis=20=E2=80=94?=
+ =?UTF-8?q?=20an=20emote=20no=20longer=20stays=20on=20the=20screen?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The last emote was removed from the list without a redraw, so its half-faded frame stayed. The overlay now redraws after removing and keeps drawing by itself until emotes and words are gone.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Change-Id: I6216e2f17d1fc862fdc18bb99d935603db1f91f4
+---
+ .../android/launcher3/blueos/BlueOSChibiFx.kt  | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSChibiFx.kt b/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
+index 8cdc135370..9cb1cb11a8 100644
+--- a/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
++++ b/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
+@@ -90,13 +90,25 @@ class BlueOSChibiFx(context: Context) : View(context) {
+ 
+     /** Each drawn frame of the layer: emotes follow the heads. */
+     fun step(now: Long) {
+-        emotes.removeAll { now - it.at > LIFE }
+-        speech.removeAll { now > it.until }
+-        if (emotes.isNotEmpty() || speech.isNotEmpty() || handX >= 0 || ghostKind >= 0) invalidate()
++        if (expire(now) || alive()) invalidate()
+     }
+ 
++    /** Drops what has lived its time; true = something went, so the picture has to be drawn once more without it. */
++    private fun expire(now: Long): Boolean {
++        val emote = emotes.removeAll { now - it.at > LIFE }
++        val words = speech.removeAll { now > it.until }
++        return emote || words
++    }
++
++    private fun alive() = emotes.isNotEmpty() || speech.isNotEmpty() || handX >= 0 || ghostKind >= 0
++
+     override fun onDraw(c: Canvas) {
+         val now = SystemClock.uptimeMillis()
++        // 0.9 bug (the user, 2026-11-10: a faded emote stayed on the screen for good): the last emote was removed in
++        // step() and nothing redrew the view, so its last, half-faded frame stayed. Now the view cleans up by itself
++        // and keeps drawing until an emote or her words are gone, also when the layer's own frames have stopped.
++        expire(now)
++        if (emotes.isNotEmpty() || speech.isNotEmpty()) postInvalidateOnAnimation()
+         for (e in emotes) {
+             val (x, y) = e.pos()
+             val k = min(1f, (now - e.at) / 350f)

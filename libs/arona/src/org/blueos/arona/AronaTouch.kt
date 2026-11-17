@@ -172,7 +172,7 @@ class AronaTouch(
         val a = IntArray(2).also { owner.getLocationInWindow(it) }
         val h = IntArray(2).also { h0.getLocationInWindow(it) }
         head.offset((a[0] - h[0]).toFloat(), (a[1] - h[1]).toFloat())
-        chip.show(line, kind, head, avoid(), h0.width, h0.height, outside())
+        chip.show(line, kind, head, avoid(), h0.width, h0.height, outside(), owner)
     }
 }
 

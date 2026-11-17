@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 12:33:58 +0700
+Subject: [PATCH 14/18] BlueOS: Settings: names of Hoshino (Armed) and Shun
+ (Swimsuit) lobbies
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I9e4979cef640d2a9d693800569abf45751523298
+---
+ src/com/android/settings/blueos/BlueOSLobbyNames.kt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/com/android/settings/blueos/BlueOSLobbyNames.kt b/src/com/android/settings/blueos/BlueOSLobbyNames.kt
+index a83a9b31cd7..805c99489b8 100755
+--- a/src/com/android/settings/blueos/BlueOSLobbyNames.kt
++++ b/src/com/android/settings/blueos/BlueOSLobbyNames.kt
+@@ -186,6 +186,7 @@ internal object BlueOSLobbyNames {
+         "ch0252" to "Tsumugi",
+         "ch0255" to "Tsubaki (Guide)",
+         "ch0257" to "Pina (Guide)",
++        "ch0258" to "Hoshino (Armed)",
+         "ch025801" to "Hoshino (Armed)",
+         "ch025802" to "Hoshino (Armed)",
+         "ch0259" to "Saori (Dress)",
+@@ -249,6 +250,7 @@ internal object BlueOSLobbyNames {
+         "ch0346" to "Iroha (Swimsuit)",
+         "ch0347" to "Ibuki (Swimsuit)",
+         "ch0348" to "Chiaki (Swimsuit)",
++        "ch0355" to "Shun (Swimsuit)",
+         "ch035501" to "Shun (Swimsuit)",
+         "ch035502" to "Shunling (Swimsuit)",
+         "ch0356" to "Kisaki (Swimsuit)",

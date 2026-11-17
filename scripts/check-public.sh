@@ -5,7 +5,8 @@
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # Lock sounds that are not from the game: «Старт» and «Огонь»
-OWN_SOUNDS="media/audio/ui/BlueOS_Lock_Start.ogg media/audio/ui/BlueOS_Unlock_Start.ogg media/audio/ui/BlueOS_Lock_Fire.ogg media/audio/ui/BlueOS_Unlock_Fire.ogg"
+# and the chibis' own sounds, synthesized by tools/make-chibi-sfx.py
+OWN_SOUNDS="media/audio/ui/BlueOS_Lock_Start.ogg media/audio/ui/BlueOS_Unlock_Start.ogg media/audio/ui/BlueOS_Lock_Fire.ogg media/audio/ui/BlueOS_Unlock_Fire.ogg media/chibi/sfx/BlueOS_Chibi_Pick.ogg media/chibi/sfx/BlueOS_Chibi_Hop.ogg media/chibi/sfx/BlueOS_Chibi_Land.ogg"
 bad=0
 game=$(find . -path ./.git -prune -o -type f \( -name '*.skel' -o -name '*.atlas' -o -name '*.wav' -o -name '*.ogg' \) -print \
     | sed 's|^\./||' | while read -r f; do case " $OWN_SOUNDS " in *" $f "*) ;; *) echo "$f" ;; esac; done)

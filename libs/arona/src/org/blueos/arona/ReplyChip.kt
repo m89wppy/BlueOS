@@ -69,8 +69,25 @@ class ReplyChip(context: Context) : LinearLayout(context) {
      * @param head her head in host coordinates; @param avoid rects that must stay visible (clock, halo…);
      * @param hostW/hostH the host's size; @param outside a rect the chip goes above or below (the widget's card).
      */
+    // 0.9 «Облачко следует за ней»: the chip moves with [anchor] (her view: inertia, the page sliding) instead of
+    // staying where it appeared (the user: many want it to stay by the character)
+    private var anchor: View? = null
+    private val anchorAt = IntArray(2)
+    private val now = IntArray(2)
+    private var baseX = 0f; private var baseY = 0f
+    private val follow = object : Runnable {
+        override fun run() {
+            val a = anchor ?: return
+            if (visibility != View.VISIBLE || !a.isAttachedToWindow) return
+            a.getLocationInWindow(now)
+            translationX = baseX + (now[0] - anchorAt[0])
+            translationY = baseY + (now[1] - anchorAt[1])
+            postOnAnimation(this)
+        }
+    }
+
     fun show(line: AronaReplies.Line, kind: AronaReplies.Kind, head: RectF, avoid: List<RectF>, hostW: Int, hostH: Int,
-             outside: RectF? = null) {
+             outside: RectF? = null, owner: View? = null) {
         val cr = context.contentResolver
         val sfxMode = BlueOSSettings.int(cr, BlueOSSettings.ARONA_VOICE) == 1
         val showEmo = sfxMode || kind == AronaReplies.Kind.NOTIFICATION
@@ -116,6 +133,9 @@ class ReplyChip(context: Context) : LinearLayout(context) {
         pivotX = (head.centerX() - c[0]).coerceIn(0f, w)
         pivotY = if (c[1] > head.centerY()) 0f else h
         scaleX = 0.94f; scaleY = 0.94f
+        removeCallbacks(follow)
+        anchor = if (owner != null && BlueOSSettings.on(cr, BlueOSSettings.BUBBLE_FOLLOW)) owner else null
+        anchor?.let { a -> a.getLocationInWindow(anchorAt); baseX = translationX; baseY = translationY; postOnAnimation(follow) }
         animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(200).start()
         postDelayed(hide, if (showText) 2800 else 1500)
     }

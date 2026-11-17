@@ -13,6 +13,8 @@ BlueOS itself: Copyright 2026 GDmio, Apache License 2.0 with an attribution cond
   Spine Runtimes License Agreement: https://esotericsoftware.com/spine-runtimes-license . Under that licence everyone
   who uses the Spine Runtimes needs their own Spine Editor licence. BlueOS uses them to draw the characters.
 - **Material Symbols** weather icons (`libs/arona/res/drawable`) — Google, Apache License 2.0.
+- **Filament** (`prebuilts/filament`: filament-android, gltfio-android 1.77.3) — Google, Apache License 2.0
+  (`prebuilts/filament/LICENSE`). BlueOS uses it to draw the 3D chibis from `.glb` files the user adds.
 - **TrebleDroid** (the GSI in the `v0.8.1-gsi-treble` release) — built with TrebleDroid (github.com/TrebleDroid, phhusson and contributors), its Android 17 port by RestlessOS
   (github.com/cawilliamson/treble_restlessos, Christopher A. Williamson) and the LineageOS GSI targets by MisterZtr
   (github.com/MisterZtr/LineageOS_gsi). Their patches are applied when the GSI is built and are not part of this

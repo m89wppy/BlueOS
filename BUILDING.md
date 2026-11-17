@@ -32,7 +32,7 @@ In `.repo/local_manifests/blueos.xml`:
   <project path="vendor/blueos" name="BlueOS" remote="blueos" revision="main" />
 </manifest>
 ```
-`revision="main"` is the newest BlueOS. For exactly the version of a release, use `revision="refs/tags/v0.8.1"`.
+`revision="main"` is the newest BlueOS. For exactly the version of a release, use `revision="refs/tags/v0.9.0"`.
 
 Hooking BlueOS into the build takes one line:
 ```

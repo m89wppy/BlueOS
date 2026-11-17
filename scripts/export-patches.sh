@@ -6,7 +6,8 @@
 TOP=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 PROJECTS="frameworks/base packages/apps/Settings packages/apps/LineageParts
     packages/apps/SetupWizard packages/apps/ThemePicker packages/apps/DeskClock packages/apps/Etar packages/apps/Glimpse packages/apps/Launcher3
-    bootable/recovery vendor/lineage frameworks/libs/systemui"
+    packages/apps/WallpaperPicker2
+    bootable/recovery vendor/lineage frameworks/libs/systemui build/soong"
 
 for project in $PROJECTS; do
     out="$TOP/vendor/blueos/patches/$project"

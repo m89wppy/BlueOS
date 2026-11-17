@@ -31,6 +31,32 @@ object BlueOSMedia {
     @JvmStatic
     fun has(rel: String, probe: String): Boolean = exists("$PRODUCT/$rel", probe) || exists("$ADDED/$rel", probe)
 
+    /** 0.9: the 3D chibis' folder under [ADDED] (Settings' importer puts every usable .glb of the user's here). */
+    const val CHIBI = "chibi"
+
+    /** 0.9: the user's chibi models, by name; names in [hidden] (without .glb) are left out. */
+    @JvmStatic
+    fun chibis(hidden: Set<String> = emptySet()): List<File> =
+        (File("$ADDED/$CHIBI").listFiles { f -> f.isFile && f.name.endsWith(".glb", true) } ?: emptyArray())
+            .filter { it.name.dropLast(4) !in hidden }
+            .sortedBy { it.name.lowercase() }
+
+    /** 0.9: at most this many chibis on the screen at once (each one costs: 3 ≈ 43 % of a core idle). */
+    const val CHIBI_MAX = 5
+    /** 0.9: how many are on the screen before the user picks (a whole collection is ~290 models). */
+    const val CHIBI_FIRST = 3
+
+    /**
+     * 0.9: the chibis on the screen. [shown] = Secure blueos_chibi_shown (names without .glb, ';'); null = never
+     * picked → the first [CHIBI_FIRST]. A new import adds nobody (the user: all 200-odd models came on at once).
+     */
+    @JvmStatic
+    fun chibisShown(shown: String?): List<File> {
+        val all = chibis()
+        val want = shown?.split(';')?.filter { it.isNotBlank() }?.toSet() ?: return all.take(CHIBI_FIRST)
+        return all.filter { it.name.dropLast(4) in want }.take(CHIBI_MAX)
+    }
+
     // asked often (BlueOSSettings reads «is there a character» with every setting) — a file check every 2 s is plenty
     private val cache = HashMap<String, Pair<Long, Boolean>>()
 

@@ -1,11 +1,18 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sat, 14 Nov 2026 09:54:14 +0700
-Subject: [PATCH] BlueOS: credit header in every BlueOS source file
+Subject: [PATCH 5/5] BlueOS: credit header in every BlueOS source file
 
+So that anyone reusing BlueOS code (or their tools) sees where it
+comes from and what the licence asks: keep NOTICE and credit BlueOS by GDmio.
+
+Change-Id: I4c25db5dd6615ace7ee5f8e5195d68c880c8829d
 ---
+ .../alarmclock/BlueOSClockWidgetProvider.java   | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
+
 diff --git a/src/com/android/alarmclock/BlueOSClockWidgetProvider.java b/src/com/android/alarmclock/BlueOSClockWidgetProvider.java
-index 0c55919..fd34940 100644
+index 0c559190a..fd34940f5 100644
 --- a/src/com/android/alarmclock/BlueOSClockWidgetProvider.java
 +++ b/src/com/android/alarmclock/BlueOSClockWidgetProvider.java
 @@ -1,17 +1,10 @@

@@ -1,0 +1,228 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Fri, 13 Nov 2026 10:49:48 +0700
+Subject: [PATCH 17/18] BlueOS: Settings pages drawn like Android 17 (back
+ button + title row, dark bar icons in the light theme)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The platform action bar's actionBarSize (112 dp) didn't match the bar drawn (56 dp): a big gap above the content on «Файлы персонажа» and «Благодарности». «Благодарности»: clearer offline line with the saved date.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Iec5e91b7efa9d4251367b9b6d6308e5a8d4c64e7
+---
+ res/values-ru/blueos_strings.xml              |  3 +-
+ res/values/blueos_strings.xml                 |  3 +-
+ .../settings/blueos/BlueOSAssetsActivity.kt   | 16 +---
+ .../settings/blueos/BlueOSThanksActivity.kt   | 96 +++++++++++++++----
+ 4 files changed, 85 insertions(+), 33 deletions(-)
+
+diff --git a/res/values-ru/blueos_strings.xml b/res/values-ru/blueos_strings.xml
+index a3b2de0b465..ef3d851d5ff 100644
+--- a/res/values-ru/blueos_strings.xml
++++ b/res/values-ru/blueos_strings.xml
+@@ -116,6 +116,7 @@
+     <string name="blueos_thanks_support_row">Поддержать проект</string>
+     <string name="blueos_thanks_empty">Пока здесь пусто.</string>
+     <string name="blueos_thanks_updated">Список загружается из интернета, поэтому новые имена появляются без обновления телефона.</string>
+-    <string name="blueos_thanks_offline">Нет интернета: показан список, сохранённый %1$s.</string>
++    <string name="blueos_thanks_offline">Не удалось обновить список, показан сохранённый %1$s.</string>
+     <string name="blueos_thanks_failed">Не удалось загрузить список. Проверьте интернет и откройте страницу ещё раз.</string>
++    <string name="blueos_page_back">Назад</string>
+ </resources>
+diff --git a/res/values/blueos_strings.xml b/res/values/blueos_strings.xml
+index a8870027f22..57e43ce9921 100644
+--- a/res/values/blueos_strings.xml
++++ b/res/values/blueos_strings.xml
+@@ -124,6 +124,7 @@
+     <string name="blueos_thanks_support_row">Support the project</string>
+     <string name="blueos_thanks_empty">The list is empty for now.</string>
+     <string name="blueos_thanks_updated">The list comes from the internet, so new names appear without updating the phone.</string>
+-    <string name="blueos_thanks_offline">No internet: the list saved %1$s is shown.</string>
++    <string name="blueos_thanks_offline">Could not update the list, showing the one saved on %1$s.</string>
+     <string name="blueos_thanks_failed">Could not load the list. Check the internet connection and open this page again.</string>
++    <string name="blueos_page_back">Back</string>
+ </resources>
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index 39a70f49185..81343152e20 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -24,7 +24,6 @@ import android.util.Log
+ import android.util.TypedValue
+ import android.view.View
+ import android.view.ViewGroup
+-import android.view.WindowInsets
+ import android.widget.Button
+ import android.widget.LinearLayout
+ import android.widget.ProgressBar
+@@ -128,20 +127,7 @@ class BlueOSAssetsActivity : Activity() {
+         col.addView(apply)
+         delete = button(R.string.blueos_assets_delete) { deleteAsk() }
+         col.addView(delete)
+-        val scroll = ScrollView(this).apply { addView(col) }
+-        // edge to edge: the window reaches under the status bar and the action bar too (0.8.1 test build: the
+-        // text started under the title) — keep clear of them, the navigation bar and the sides
+-        val bar = TypedValue().let { tv ->
+-            if (theme.resolveAttribute(android.R.attr.actionBarSize, tv, true))
+-                TypedValue.complexToDimensionPixelSize(tv.data, resources.displayMetrics) else 0
+-        }
+-        scroll.setOnApplyWindowInsetsListener { v, insets ->
+-            val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+-            v.setPadding(i.left, i.top + bar, i.right, i.bottom)
+-            insets
+-        }
+-        scroll.clipToPadding = false
+-        setContentView(scroll)
++        setContentView(BlueOSPage.frame(this, getString(R.string.blueos_assets_title), col))
+         showAdded()
+         showAgain()
+     }
+diff --git a/src/com/android/settings/blueos/BlueOSThanksActivity.kt b/src/com/android/settings/blueos/BlueOSThanksActivity.kt
+index f10777b9b57..e92ecfeddb7 100755
+--- a/src/com/android/settings/blueos/BlueOSThanksActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSThanksActivity.kt
+@@ -7,6 +7,7 @@ package com.android.settings.blueos
+ 
+ import android.app.Activity
+ import android.content.Intent
++import android.content.res.ColorStateList
+ import android.content.res.Configuration
+ import android.graphics.Typeface
+ import android.graphics.drawable.GradientDrawable
+@@ -20,16 +21,18 @@ import android.util.TypedValue
+ import android.view.Gravity
+ import android.view.View
+ import android.view.WindowInsets
++import android.view.WindowInsetsController
++import android.widget.ImageButton
+ import android.widget.LinearLayout
+ import android.widget.ProgressBar
+ import android.widget.ScrollView
+ import android.widget.TextView
+ import com.android.settings.R
+-import org.json.JSONObject
+ import java.io.File
+ import java.net.HttpURLConnection
+ import java.net.URL
+ import java.util.Locale
++import org.json.JSONObject
+ 
+ /**
+  * BlueOS 0.9: «Благодарности» (About phone). The list is NOT in the build: it is `thanks.json` in the public repository
+@@ -67,19 +70,7 @@ class BlueOSThanksActivity : Activity() {
+         status = text("", 13f, primary = false).apply { setPadding(dp(8), dp(16), dp(8), 0) }
+         col.addView(status)
+ 
+-        val scroll = ScrollView(this).apply { addView(col) }
+-        // edge to edge: keep clear of the status bar, the action bar, the navigation bar and the sides
+-        val bar = TypedValue().let { tv ->
+-            if (theme.resolveAttribute(android.R.attr.actionBarSize, tv, true))
+-                TypedValue.complexToDimensionPixelSize(tv.data, resources.displayMetrics) else 0
+-        }
+-        scroll.setOnApplyWindowInsetsListener { v, insets ->
+-            val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+-            v.setPadding(i.left, i.top + bar, i.right, i.bottom)
+-            insets
+-        }
+-        scroll.clipToPadding = false
+-        setContentView(scroll)
++        setContentView(BlueOSPage.frame(this, getString(R.string.blueos_thanks_title), col))
+ 
+         // the saved list right away, then the fresh one
+         val saved = read(cache)
+@@ -95,7 +86,8 @@ class BlueOSThanksActivity : Activity() {
+                         status.text = getString(R.string.blueos_thanks_updated)
+                     }
+                     saved != null -> status.text = getString(R.string.blueos_thanks_offline,
+-                        DateUtils.getRelativeTimeSpanString(cache.lastModified()))
++                        DateUtils.formatDateTime(this, cache.lastModified(),
++                        DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH))
+                     else -> status.text = getString(R.string.blueos_thanks_failed)
+                 }
+             }
+@@ -113,7 +105,7 @@ class BlueOSThanksActivity : Activity() {
+         c.readTimeout = 8000
+         c.useCaches = false
+         try {
+-            if (c.responseCode != 200) null
++            if (c.responseCode != 200) { Log.w(TAG, "thanks list: HTTP ${c.responseCode}"); null }
+             else {
+                 val body = c.inputStream.use { it.readBytes() }
+                 val json = JSONObject(String(body))
+@@ -231,3 +223,75 @@ class BlueOSThanksActivity : Activity() {
+         const val URL_THANKS = "https://raw.githubusercontent.com/GDmio/BlueOS/main/thanks.json"
+     }
+ }
++
++/**
++ * The frame of the BlueOS pages in Settings («Файлы персонажа», «Благодарности»), drawn like Android 17's own pages:
++ * a round back button and the title in one row that scroll with the content, instead of the platform action bar. The action
++ * bar's height from the theme (`actionBarSize`, 112 dp in Android 17) didn't match the bar drawn (56 dp) and left a
++ * big empty gap above the content (2026-11-13). The page is edge to edge: keep clear of the system bars and the cutout.
++ */
++object BlueOSPage {
++
++    fun frame(a: Activity, title: CharSequence, content: View): ScrollView {
++        a.actionBar?.hide()
++        val res = a.resources
++        fun dp(v: Int) = (v * res.displayMetrics.density).toInt()
++        val dark = (res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
++        fun color(light: Int, darkC: Int) = a.getColor(if (dark) darkC else light)
++        val onSurface = color(android.R.color.system_on_surface_light, android.R.color.system_on_surface_dark)
++        // dark status / navigation bar icons on the light page (the theme left them white: invisible in the light theme)
++        val lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
++            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
++        a.window.insetsController?.setSystemBarsAppearance(if (dark) 0 else lightBars, lightBars)
++
++        val back = ImageButton(a).apply {
++            val up = TypedValue()
++            if (a.theme.resolveAttribute(android.R.attr.homeAsUpIndicator, up, true) && up.resourceId != 0) {
++                setImageDrawable(a.getDrawable(up.resourceId))
++            }
++            imageTintList = ColorStateList.valueOf(onSurface)
++            background = GradientDrawable().apply {
++                shape = GradientDrawable.OVAL
++                setColor(color(android.R.color.system_surface_container_high_light,
++                    android.R.color.system_surface_container_high_dark))
++            }
++            foreground = a.getDrawable(TypedValue().also {
++                a.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, it, true)
++            }.resourceId)
++            contentDescription = a.getString(R.string.blueos_page_back)
++            setOnClickListener { a.finish() }
++        }
++        val head = TextView(a).apply {
++            text = title
++            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
++            setTextColor(onSurface)
++            maxLines = 1
++            ellipsize = android.text.TextUtils.TruncateAt.END
++        }
++        // measured on «О телефоне» (2026-11-13): one 56 dp row, a 40 dp round button 24 dp from the edge, the title 20 dp
++        // after it
++        val bar = LinearLayout(a).apply {
++            orientation = LinearLayout.HORIZONTAL
++            gravity = Gravity.CENTER_VERTICAL
++            setPadding(dp(24), 0, dp(16), 0)
++            addView(back, LinearLayout.LayoutParams(dp(40), dp(40)))
++            addView(head, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
++                .apply { marginStart = dp(20) })
++        }
++        val page = LinearLayout(a).apply {
++            orientation = LinearLayout.VERTICAL
++            gravity = Gravity.START
++            addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)))
++            addView(content)
++        }
++        return ScrollView(a).apply {
++            addView(page)
++            clipToPadding = false
++            setOnApplyWindowInsetsListener { v, insets ->
++                val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
++                v.setPadding(i.left, i.top, i.right, i.bottom)
++                insets
++            }
++        }
++    }
++}

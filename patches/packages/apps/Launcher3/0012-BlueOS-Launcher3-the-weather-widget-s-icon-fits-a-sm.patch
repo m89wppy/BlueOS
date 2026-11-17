@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Thu, 5 Nov 2026 10:10:52 +0700
-Subject: [PATCH 12/12] BlueOS: Launcher3: the weather widget's icon fits a
+Subject: [PATCH 12/23] BlueOS: Launcher3: the weather widget's icon fits a
  small card
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

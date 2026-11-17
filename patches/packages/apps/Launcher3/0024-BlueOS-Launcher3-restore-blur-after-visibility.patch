@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Mon, 16 Nov 2026 14:11:08 +0700
+Subject: [PATCH 24/24] BlueOS: Launcher3: restore blur after visibility
+ changes
+
+Reapply blur bounds when the drawable is shown again. Android clears its path if bounds are set while it is hidden or transparent. Invalidate icon display lists on alpha crossings because their blur is drawn without a drawable callback.
+
+Co-authored-by: Codex <codex@openai.com>
+Change-Id: Ie34b1b22053414082354daec37a4d6153f9680e5
+---
+ .../launcher3/blueos/BlueOSWidgetDecorator.kt | 29 +++++++++++++++++--
+ 1 file changed, 26 insertions(+), 3 deletions(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt b/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
+index 140ad9f5e8..aebff3e684 100644
+--- a/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
++++ b/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
+@@ -26,6 +26,7 @@ import android.graphics.RectF
+ import android.graphics.Shader
+ import android.graphics.drawable.ColorDrawable
+ import android.graphics.drawable.Drawable
++import android.graphics.drawable.DrawableWrapper
+ import android.graphics.drawable.GradientDrawable
+ import android.graphics.drawable.LayerDrawable
+ import android.media.AudioManager
+@@ -158,12 +159,29 @@ object BlueOSMaterial {
+         d.javaClass.getMethod("setBlurRadius", Int::class.javaPrimitiveType).invoke(d, radiusPx.toInt())
+         d.javaClass.getMethod("setCornerRadius", Float::class.javaPrimitiveType).invoke(d, r)
+         d.javaClass.getMethod("setColor", Int::class.javaPrimitiveType).invoke(d, Color.TRANSPARENT)
+-        track(view, d)
+-        d
++        val blur = WallpaperBlurDrawable(d)
++        track(view, blur)
++        blur
+     } catch (t: Throwable) {
+         null
+     }
+ 
++    // Android clears the blur's path when bounds change while it is hidden. Showing the drawable
++    // or restoring its alpha doesn't rebuild that path, so reapply the bounds when it comes back.
++    private class WallpaperBlurDrawable(private val blur: Drawable) : DrawableWrapper(blur) {
++        override fun setAlpha(alpha: Int) {
++            val wasTransparent = blur.alpha == 0
++            super.setAlpha(alpha)
++            if (wasTransparent && alpha != 0 && isVisible) blur.bounds = bounds
++        }
++
++        override fun setVisible(visible: Boolean, restart: Boolean): Boolean {
++            val changed = super.setVisible(visible, restart)
++            if (changed && visible && blur.alpha != 0) blur.bounds = bounds
++            return changed
++        }
++    }
++
+     /**
+      * 0.8: a blur region is the window's, not the view's — it ignores the alpha of the view's parents. In «Недавние»
+      * the launcher fades the home screen out (alpha 0) over the live app, but the blur stayed at every widget and
+@@ -185,7 +203,12 @@ object BlueOSMaterial {
+         for ((d, ref) in tracked) {
+             val v = ref.get() ?: continue
+             val a = (shownAlpha(v) * 255).toInt()
+-            if (d.alpha != a) d.alpha = a
++            val previous = d.alpha
++            if (previous != a) {
++                d.alpha = a
++                // Icon blurs are drawn directly and have no drawable callback to invalidate the view.
++                if (d.callback == null && (a == 0 || previous == 0)) v.invalidate()
++            }
+         }
+     }
+ 

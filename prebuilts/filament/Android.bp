@@ -1,0 +1,26 @@
+//
+// Google Filament 1.77.3 for BlueOS 0.9 chibis (3D models on the home screen), from Maven Central:
+//   com.google.android.filament:filament-android:1.77.3 (the renderer)
+//   com.google.android.filament:gltfio-android:1.77.3   (glTF loader: skins, morph weights, animations)
+// Apache License 2.0 (LICENSE next to this file). The AARs are the Maven ones with only jni/arm64-v8a kept (every
+// BlueOS target is arm64; the x86/x86_64/armeabi-v7a copies were dropped, nothing else changed). The native .so come
+// out of the AARs (extract_jni) and are packaged into the app that uses them — a system app needs
+// `use_embedded_native_libs: true` for that, otherwise Soong silently leaves them out.
+//
+
+android_library_import {
+    name: "blueos-filament-android",
+    aars: ["filament-android-1.77.3.aar"],
+    extract_jni: true,
+    sdk_version: "current",
+    min_sdk_version: "31",
+}
+
+android_library_import {
+    name: "blueos-gltfio-android",
+    aars: ["gltfio-android-1.77.3.aar"],
+    extract_jni: true,
+    static_libs: ["blueos-filament-android"],
+    sdk_version: "current",
+    min_sdk_version: "31",
+}

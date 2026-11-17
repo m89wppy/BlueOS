@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sun, 25 Oct 2026 12:33:42 +0100
-Subject: [PATCH 3/3] BlueOS: Glimpse: Built-in Arona sticker for the default
+Subject: [PATCH 3/4] BlueOS: Glimpse: Built-in Arona sticker for the default
  home screen
 
 The launcher's default workspace asks for it with the extra

@@ -69,7 +69,7 @@ object AronaModel {
         if (list.size > 1) return                                         // already loading
         io.execute {
             val m = try {
-                val atlas = AndroidTextureAtlas.fromFile(File(dir, "$name.atlas"))
+                val atlas = BlueOSLobbies.fixBlend(AndroidTextureAtlas.fromFile(File(dir, "$name.atlas")))
                 val loader: AttachmentLoader = AndroidAtlasAttachmentLoader(atlas).let { if (lenient) Lenient(it) else it }
                 Model(atlas, SkeletonBinary(loader).readSkeletonData(FileHandle(File(dir, "$name.skel"))))
             } catch (t: Throwable) {

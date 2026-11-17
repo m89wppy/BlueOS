@@ -1,0 +1,220 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Sun, 8 Nov 2026 16:37:08 +0700
+Subject: [PATCH 16/23] =?UTF-8?q?BlueOS:=20ThemePicker:=20=C2=AB=D0=A7?=
+ =?UTF-8?q?=D0=B8=D0=B1=D0=B8=C2=BB=20settings=20page?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: If4431f61341a78c2bf5eff9ac687d8532b883225
+---
+ res/values-ru/blueos_09_strings.xml           | 39 +++++++++++++
+ res/values/blueos_09_strings.xml              | 40 +++++++++++++
+ .../blueos/BlueOSSettingsActivity.kt          | 57 ++++++++++++++++++-
+ .../ThemePickerCustomizationOptionViewUtil.kt |  2 +
+ 4 files changed, 136 insertions(+), 2 deletions(-)
+ create mode 100644 res/values-ru/blueos_09_strings.xml
+ create mode 100644 res/values/blueos_09_strings.xml
+
+diff --git a/res/values-ru/blueos_09_strings.xml b/res/values-ru/blueos_09_strings.xml
+new file mode 100644
+index 00000000..b7eb2ce5
+--- /dev/null
++++ b/res/values-ru/blueos_09_strings.xml
+@@ -0,0 +1,39 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <string name="blueos_s_entry_chibi">Чиби</string>
++    <string name="blueos_s_entry_chibi_desc">Маленькие ученицы на рабочем столе: ходят по виджетам, сидят на них и отвечают на касания</string>
++    <string name="blueos_s_page_chibi">Чиби</string>
++    <string name="blueos_s_chibi_on">Чиби на рабочем столе</string>
++    <string name="blueos_s_chibi_on_d">Ученицы из твоих файлов персонажа живут на рабочем столе — поверх обоев и виджетов</string>
++    <string name="blueos_s_chibi_who">Кто на экране</string>
++    <string name="blueos_s_chibi_count"><xliff:g id="shown" example="2">%1$d</xliff:g> из <xliff:g id="all" example="3">%2$d</xliff:g></string>
++    <string name="blueos_s_chibi_none">Пока никого не добавлено</string>
++    <string name="blueos_s_chibi_files">Файлы персонажа</string>
++    <string name="blueos_s_chibi_files_d">3D-модели учениц (.glb) добавляются вместе с остальными файлами — одной папкой или одним архивом</string>
++    <string name="blueos_s_h_chibi_life">Что они делают</string>
++    <string name="blueos_s_chibi_walk">Гуляют</string>
++    <string name="blueos_s_chibi_walk_d">Иногда идут по верхнему краю виджета или перепрыгивают на другой виджет. Если выключить, стоят там, куда их поставили</string>
++    <string name="blueos_s_chibi_sit">Сидят на краю виджета</string>
++    <string name="blueos_s_chibi_sit_d">Иногда ученица садится на верхний край виджета и болтает ногами</string>
++    <string name="blueos_s_chibi_depth">Как низко садится</string>
++    <string name="blueos_s_chibi_depth_d">Опускается на <xliff:g id="pct" example="30">%d</xliff:g>%% своего роста — край виджета должен прийтись на сиденье</string>
++    <string name="blueos_s_chibi_pat">Можно гладить</string>
++    <string name="blueos_s_chibi_pat_d">Проведи пальцем по голове туда-сюда: она наклоняет голову под руку и радуется</string>
++    <string name="blueos_s_chibi_acts">Занятия, как в кафе</string>
++    <string name="blueos_s_chibi_acts_d">Иногда садится за десерт, клавиатуру или учёбу — если такие анимации есть в её модели</string>
++    <string name="blueos_s_chibi_touch">Касания</string>
++    <string name="blueos_s_chibi_touch_d">Нажатие — она падает и потом встаёт. Удерживай — возьмёшь в руки, отпустишь — упадёт на ближайший виджет под ней. Подарок из виджета «Подарки» — реагирует, как в кафе. Свайпы мимо неё листают экраны как обычно</string>
++    <string name="blueos_s_h_chibi_look">Вид</string>
++    <string name="blueos_s_chibi_size">Размер</string>
++    <string name="blueos_s_chibi_size_s">Маленькие</string>
++    <string name="blueos_s_chibi_size_m">Средние — чуть меньше одной ячейки виджета</string>
++    <string name="blueos_s_chibi_size_l">Крупные</string>
++    <string name="blueos_s_chibi_size_xl">Очень крупные</string>
++    <string name="blueos_s_chibi_light">Свет</string>
++    <string name="blueos_s_chibi_light_game">Как в игре — ровные цвета без бликов</string>
++    <string name="blueos_s_chibi_light_lit">Со светом и тенью</string>
++    <string name="blueos_s_chibi_fps">Плавность, когда их не трогают</string>
++    <string name="blueos_s_chibi_fps_60">Плавно — тратит больше батареи</string>
++    <string name="blueos_s_chibi_fps_30">Обычно</string>
++    <string name="blueos_s_chibi_fps_15">Экономно — чуть дёргано</string>
++</resources>
+diff --git a/res/values/blueos_09_strings.xml b/res/values/blueos_09_strings.xml
+new file mode 100644
+index 00000000..77450cd4
+--- /dev/null
++++ b/res/values/blueos_09_strings.xml
+@@ -0,0 +1,40 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9: «Чиби» — 3D students from the user's own .glb files on the home screen -->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <string name="blueos_s_entry_chibi">Chibis</string>
++    <string name="blueos_s_entry_chibi_desc">Little students on your home screen: they walk on the widgets, sit on them and react when you touch them</string>
++    <string name="blueos_s_page_chibi">Chibis</string>
++    <string name="blueos_s_chibi_on">Chibis on the home screen</string>
++    <string name="blueos_s_chibi_on_d">The students from your character files live on the home screen, over the wallpaper and the widgets</string>
++    <string name="blueos_s_chibi_who">Who is on the screen</string>
++    <string name="blueos_s_chibi_count"><xliff:g id="shown" example="2">%1$d</xliff:g> of <xliff:g id="all" example="3">%2$d</xliff:g></string>
++    <string name="blueos_s_chibi_none">None added yet</string>
++    <string name="blueos_s_chibi_files">Character files</string>
++    <string name="blueos_s_chibi_files_d">Add the students\' 3D models (.glb) together with the other files — one folder or one archive</string>
++    <string name="blueos_s_h_chibi_life">What they do</string>
++    <string name="blueos_s_chibi_walk">Walk around</string>
++    <string name="blueos_s_chibi_walk_d">Now and then they walk along a widget\'s top edge or hop to another widget. Off: they stay where you put them</string>
++    <string name="blueos_s_chibi_sit">Sit on a widget\'s edge</string>
++    <string name="blueos_s_chibi_sit_d">Now and then a student sits down on a widget\'s top edge and swings her legs</string>
++    <string name="blueos_s_chibi_depth">How low she sits</string>
++    <string name="blueos_s_chibi_depth_d">Lowered by <xliff:g id="pct" example="30">%d</xliff:g>%% of her height — the edge should be her seat</string>
++    <string name="blueos_s_chibi_pat">Patting</string>
++    <string name="blueos_s_chibi_pat_d">Move a finger left and right over her head: she leans her head into your hand and is happy</string>
++    <string name="blueos_s_chibi_acts">Café activities</string>
++    <string name="blueos_s_chibi_acts_d">Now and then she sits down to a dessert, a keyboard or her studies — if her model has these animations</string>
++    <string name="blueos_s_chibi_touch">Touching her</string>
++    <string name="blueos_s_chibi_touch_d">A tap: she falls down and gets up again. Hold her: you pick her up, let go and she drops onto the nearest widget below. A gift from the Gifts widget: she reacts like in the café. Swipes past her still turn the pages</string>
++    <string name="blueos_s_h_chibi_look">Look</string>
++    <string name="blueos_s_chibi_size">Size</string>
++    <string name="blueos_s_chibi_size_s">Small</string>
++    <string name="blueos_s_chibi_size_m">Medium — a bit smaller than one widget cell</string>
++    <string name="blueos_s_chibi_size_l">Large</string>
++    <string name="blueos_s_chibi_size_xl">Very large</string>
++    <string name="blueos_s_chibi_light">Light</string>
++    <string name="blueos_s_chibi_light_game">Like in the game — flat colours, no shine</string>
++    <string name="blueos_s_chibi_light_lit">With light and shade</string>
++    <string name="blueos_s_chibi_fps">Smoothness when nobody touches them</string>
++    <string name="blueos_s_chibi_fps_60">Smooth — uses more battery</string>
++    <string name="blueos_s_chibi_fps_30">Normal</string>
++    <string name="blueos_s_chibi_fps_15">Battery saving — a little jerky</string>
++</resources>
+diff --git a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+index b8faf512..848392f0 100644
+--- a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
++++ b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+@@ -28,6 +28,7 @@ enum class BlueOSCustomizationOption(val page: String, val title: Int, val desc:
+     HOME(BlueOSSettingsActivity.HOME, R.string.blueos_s_entry_home, R.string.blueos_s_entry_home_desc),
+     MOTION(BlueOSSettingsActivity.MOTION, R.string.blueos_s_entry_motion, R.string.blueos_s_entry_motion_desc),
+     WEATHER(BlueOSSettingsActivity.WEATHER, R.string.blueos_s_entry_weather, R.string.blueos_s_entry_weather_desc),
++    CHIBI(BlueOSSettingsActivity.CHIBI, R.string.blueos_s_entry_chibi, R.string.blueos_s_entry_chibi_desc),
+     COLORS(BlueOSSettingsActivity.COLORS, R.string.blueos_s_entry_colors, R.string.blueos_s_entry_colors_desc);
+ 
+     /** A list entry styled like the stock ones ("More lock screen settings" layout). */
+@@ -57,6 +58,7 @@ class BlueOSSettingsActivity : Activity() {
+         const val MOTION = "motion"
+         const val WEATHER = "weather"
+         const val COLORS = "colors"
++        const val CHIBI = "chibi"
+ 
+         fun open(context: Context, page: String) =
+             context.startActivity(Intent(context, BlueOSSettingsActivity::class.java).putExtra(EXTRA_PAGE, page))
+@@ -322,6 +324,57 @@ class BlueOSSettingsActivity : Activity() {
+         },
+     )
+ 
++    /** 0.9 «Чиби»: the students from the user's .glb files on the home screen (the launcher's BlueOSChibiLayer). */
++    private fun chibiPage(): List<Item> {
++        val shown = { on(K.CHIBI_ON) }
++        return listOf(
++            Item.Sw(K.CHIBI_ON, R.string.blueos_s_chibi_on, R.string.blueos_s_chibi_on_d),
++            Item.Value(R.string.blueos_s_chibi_who, { chibiCount() }) { pickChibis() },
++            Item.Btn(R.string.blueos_s_chibi_files, R.string.blueos_s_chibi_files_d, dep = { true }) { openAssets() },
++            Item.Header(R.string.blueos_s_h_chibi_life),
++            Item.Sw(K.CHIBI_WALK, R.string.blueos_s_chibi_walk, R.string.blueos_s_chibi_walk_d, dep = shown),
++            Item.Sw(K.CHIBI_SIT, R.string.blueos_s_chibi_sit, R.string.blueos_s_chibi_sit_d, dep = shown),
++            Item.Slider(K.CHIBI_SIT_DEPTH, R.string.blueos_s_chibi_depth, sub = true, max = 60, dep = { shown() && on(K.CHIBI_SIT) }) { v ->
++                getString(R.string.blueos_s_chibi_depth_d, v)
++            },
++            Item.Sw(K.CHIBI_PAT, R.string.blueos_s_chibi_pat, R.string.blueos_s_chibi_pat_d, dep = shown),
++            Item.Sw(K.CHIBI_ACTS, R.string.blueos_s_chibi_acts, R.string.blueos_s_chibi_acts_d, dep = shown),
++            Item.Info(R.string.blueos_s_chibi_touch, R.string.blueos_s_chibi_touch_d),
++            Item.Header(R.string.blueos_s_h_chibi_look),
++            Item.Slider(K.CHIBI_SIZE, R.string.blueos_s_chibi_size, min = 80, max = 170, dep = shown) { v ->
++                getString(when { v < 100 -> R.string.blueos_s_chibi_size_s; v < 135 -> R.string.blueos_s_chibi_size_m
++                                  v < 155 -> R.string.blueos_s_chibi_size_l; else -> R.string.blueos_s_chibi_size_xl })
++            },
++            Item.Choice(K.CHIBI_LIGHT, R.string.blueos_s_chibi_light, listOf(
++                R.string.blueos_s_chibi_light_game to 0, R.string.blueos_s_chibi_light_lit to 1), dep = shown),
++            Item.Choice(K.CHIBI_FPS, R.string.blueos_s_chibi_fps, listOf(
++                R.string.blueos_s_chibi_fps_60 to 60, R.string.blueos_s_chibi_fps_30 to 30, R.string.blueos_s_chibi_fps_15 to 15), dep = shown),
++        )
++    }
++
++    private fun hiddenChibis() = K.string(contentResolver, K.CHIBI_HIDDEN, "").split(';').filter { it.isNotBlank() }.toSet()
++
++    private fun chibiCount(): String {
++        val all = org.blueos.arona.BlueOSMedia.chibis()
++        if (all.isEmpty()) return getString(R.string.blueos_s_chibi_none)
++        val hidden = hiddenChibis()
++        return getString(R.string.blueos_s_chibi_count, all.count { it.name.dropLast(4) !in hidden }, all.size)
++    }
++
++    /** Which of the user's chibis are on the home screen (all by default). */
++    private fun pickChibis() {
++        val names = org.blueos.arona.BlueOSMedia.chibis().map { it.name.dropLast(4) }
++        if (names.isEmpty()) { openAssets(); return }
++        val hidden = hiddenChibis().toMutableSet()
++        val checked = BooleanArray(names.size) { names[it] !in hidden }
++        android.app.AlertDialog.Builder(this)
++            .setTitle(R.string.blueos_s_chibi_who)
++            .setMultiChoiceItems(names.toTypedArray(), checked) { _, i, c -> if (c) hidden -= names[i] else hidden += names[i] }
++            .setPositiveButton(android.R.string.ok) { _, _ -> put(K.CHIBI_HIDDEN, hidden.joinToString(";")) }
++            .setNegativeButton(android.R.string.cancel, null)
++            .show()
++    }
++
+     private fun cityName() = K.string(contentResolver, K.WEATHER_CITY, "").substringBefore(';').ifEmpty { null }
+ 
+     private class City(val name: String, val label: String, val lat: Double, val lon: Double)
+@@ -621,7 +674,7 @@ class BlueOSSettingsActivity : Activity() {
+             setText(when (page) {
+                 HOME -> R.string.blueos_s_page_home; WEATHER -> R.string.blueos_s_page_weather
+                 CLOCK -> R.string.blueos_s_page_clock; MOTION -> R.string.blueos_s_page_motion
+-                COLORS -> R.string.blueos_s_page_colors
++                COLORS -> R.string.blueos_s_page_colors; CHIBI -> R.string.blueos_s_page_chibi
+                 else -> R.string.blueos_s_page_arona
+             })
+             setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
+@@ -638,7 +691,7 @@ class BlueOSSettingsActivity : Activity() {
+         setContentView(root)
+         val items = when (page) {
+             HOME -> homePage(); WEATHER -> weatherPage(); CLOCK -> clockPage(); MOTION -> motionPage()
+-            COLORS -> colorsPage()
++            COLORS -> colorsPage(); CHIBI -> chibiPage()
+             else -> aronaPage()
+         }
+         // rows between two section titles form one group: rounded at its ends, 2 dp apart (SettingsLib expressive)
+diff --git a/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt b/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
+index 47b90eb1e..8b663b49 100644
+--- a/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
++++ b/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
+@@ -207,6 +207,8 @@ constructor(
+                     // BlueOS 0.7.1: widgets and icons, Arona (and her widget), weather, phone motion
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.HOME.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.ARONA.entry(layoutInflater, optionContainer))
++                    // BlueOS 0.9: the 3D chibis on the home screen
++                    add(com.android.customization.blueos.BlueOSCustomizationOption.CHIBI.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.WEATHER.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.MOTION.entry(layoutInflater, optionContainer))
+                 }

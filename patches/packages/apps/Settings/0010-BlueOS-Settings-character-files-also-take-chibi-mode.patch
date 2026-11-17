@@ -1,0 +1,147 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Sun, 8 Nov 2026 16:37:08 +0700
+Subject: [PATCH 10/18] BlueOS: Settings: character files also take chibi
+ models (.glb)
+
+Every glTF 2 .glb with a skin and the Cafe_Idle/Cafe_Walk animations in the picked folder or zip goes to /data/misc/blueos/chibi; others are reported as skipped.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Iadbd6300c9f933fc45349d9a9186bad185e6657d
+---
+ res/values-ru/blueos_strings.xml              |  2 +
+ res/values/blueos_strings.xml                 |  3 +
+ .../settings/blueos/BlueOSAssetsActivity.kt   | 58 ++++++++++++++++++-
+ 3 files changed, 60 insertions(+), 3 deletions(-)
+
+diff --git a/res/values-ru/blueos_strings.xml b/res/values-ru/blueos_strings.xml
+index 2bd0a6ba172..4a7ec979b61 100644
+--- a/res/values-ru/blueos_strings.xml
++++ b/res/values-ru/blueos_strings.xml
+@@ -70,6 +70,8 @@
+     <string name="blueos_assets_g_sfx">Звуки эмоций</string>
+     <string name="blueos_assets_g_desk">Парта</string>
+     <string name="blueos_assets_g_plana">Плана</string>
++    <string name="blueos_assets_chibi">Чиби: <xliff:g id="count" example="4">%d</xliff:g></string>
++    <string name="blueos_assets_chibi_skipped">Пропущено файлов .glb: <xliff:g id="count" example="2">%d</xliff:g>. В них нет анимаций кафе (Cafe_Idle, Cafe_Walk), или это не 3D-модели с костями.</string>
+     <string name="blueos_assets_g_plana_voice">Голос Планы</string>
+     <string name="blueos_assets_g_ui">Звуки блокировки и касания</string>
+     <string name="blueos_assets_g_ringtones">Мелодии звонка</string>
+diff --git a/res/values/blueos_strings.xml b/res/values/blueos_strings.xml
+index 56048608fb4..17d69fe56e7 100644
+--- a/res/values/blueos_strings.xml
++++ b/res/values/blueos_strings.xml
+@@ -76,6 +76,9 @@
+     <string name="blueos_assets_g_sfx">Emotion sounds</string>
+     <string name="blueos_assets_g_desk">Desk</string>
+     <string name="blueos_assets_g_plana">Plana</string>
++    <!-- BlueOS 0.9: 3D chibis (.glb) found anywhere in the picked folder or archive -->
++    <string name="blueos_assets_chibi">Chibis: <xliff:g id="count" example="4">%d</xliff:g></string>
++    <string name="blueos_assets_chibi_skipped">.glb files skipped: <xliff:g id="count" example="2">%d</xliff:g>. They have no café animations (Cafe_Idle, Cafe_Walk) or aren\'t 3D models with bones.</string>
+     <string name="blueos_assets_g_plana_voice">Plana\'s voice</string>
+     <string name="blueos_assets_g_ui">Lock and touch sounds</string>
+     <string name="blueos_assets_g_ringtones">Ringtones</string>
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index 4e8422c00dc..1a161a36534 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -294,7 +294,9 @@ class BlueOSAssetsActivity : Activity() {
+         val scene = if (deskFound) emptyList() else sources.filter {
+             norm(it.name).startsWith(SCENE) && norm(it.name).substringAfterLast('.') in setOf("atlas", "skel", "png")
+         }
+-        if (found.isEmpty() && scene.isEmpty()) return getString(R.string.blueos_assets_none)
++        // 0.9: 3D chibis — every .glb in any folder (the user's own models; checked after copying)
++        val chibis = sources.filter { it.name.lowercase().endsWith(".glb") }.distinctBy { chibiName(it.name) }
++        if (found.isEmpty() && scene.isEmpty() && chibis.isEmpty()) return getString(R.string.blueos_assets_none)
+ 
+         setBusy(true, R.string.blueos_assets_copying)
+         val verified = HashSet<Target>()
+@@ -313,6 +315,15 @@ class BlueOSAssetsActivity : Activity() {
+         for (s in scene) {
+             wanted += Pair<Source, (InputStream) -> Unit>(s) { input -> write(input, File(sceneDir, norm(s.name))) }
+         }
++        var chibiOk = 0
++        var chibiSkipped = 0
++        for (s in chibis) {
++            wanted += Pair<Source, (InputStream) -> Unit>(s) { input ->
++                val f = File("$ADDED/$CHIBI/${chibiName(s.name)}")
++                write(input, f)
++                if (isChibi(f)) chibiOk++ else { f.delete(); chibiSkipped++ }
++            }
++        }
+         copy(wanted)
+         changed = true
+ 
+@@ -334,7 +345,38 @@ class BlueOSAssetsActivity : Activity() {
+             }
+         }
+         sceneDir.deleteRecursively()
+-        return report(targets, found.keys, verified, deskCut)
++        return report(targets, found.keys, verified, deskCut, chibiOk, chibiSkipped)
++    }
++
++    /** «Airi (Band).glb» → «Airi (Band).glb»: only characters that are safe in a file name on any side. */
++    private fun chibiName(name: String) = name.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
++
++    /**
++     * A usable chibi: binary glTF 2.0 with a skin and the café walk + idle (Cafe_Idle, Cafe_Walk). Reads only the
++     * JSON chunk at the start of the file.
++     */
++    private fun isChibi(f: File): Boolean {
++        return try { readChibi(f) } catch (e: Exception) {
++            Log.w(TAG, "not a chibi: ${f.name}", e)
++            false
++        }
++    }
++
++    private fun readChibi(f: File): Boolean {
++        f.inputStream().buffered().use { s ->
++            val head = ByteArray(20)
++            if (s.readNBytes(head, 0, 20) != 20) return false
++            val b = java.nio.ByteBuffer.wrap(head).order(java.nio.ByteOrder.LITTLE_ENDIAN)
++            if (b.getInt(0) != 0x46546C67 || b.getInt(4) != 2 || b.getInt(16) != 0x4E4F534A) return false
++            val len = b.getInt(12)
++            if (len <= 0 || len > 64 shl 20) return false
++            val json = ByteArray(len)
++            if (s.readNBytes(json, 0, len) != len) return false
++            val g = org.json.JSONObject(String(json, Charsets.UTF_8))
++            val anims = g.optJSONArray("animations") ?: return false
++            val names = (0 until anims.length()).map { anims.getJSONObject(it).optString("name") }.toSet()
++            return (g.optJSONArray("skins")?.length() ?: 0) > 0 && CHIBI_NEEDS.all { it in names }
++        }
+     }
+ 
+     /** Copies to [to] via a temporary file (readable by SystemUI and the launcher); returns its sha256. */
+@@ -387,7 +429,8 @@ class BlueOSAssetsActivity : Activity() {
+         return true
+     }
+ 
+-    private fun report(targets: List<Target>, found: Set<Target>, verified: Set<Target>, deskCut: Boolean): String {
++    private fun report(targets: List<Target>, found: Set<Target>, verified: Set<Target>, deskCut: Boolean,
++                       chibiOk: Int, chibiSkipped: Int): String {
+         val lines = mutableListOf<String>()
+         for ((group, label) in GROUPS) {
+             val all = targets.filter { it.group == group }
+@@ -398,6 +441,12 @@ class BlueOSAssetsActivity : Activity() {
+             lines += if (desk) "$mark ${getString(label)}: ${getString(R.string.blueos_assets_desk_cut)}"
+                      else "$mark ${getString(label)}: ${getString(R.string.blueos_assets_of, n, all.size)}"
+         }
++        // all chibis on the phone now, not only this time's
++        val chibisNow = File("$ADDED/$CHIBI").listFiles { f -> f.name.endsWith(".glb", true) }?.size ?: 0
++        if (chibisNow > 0 || chibiSkipped > 0) {
++            lines += "${if (chibiOk > 0 || chibisNow > 0) "✓" else "—"} ${getString(R.string.blueos_assets_chibi, chibisNow)}"
++        }
++        if (chibiSkipped > 0) lines += getString(R.string.blueos_assets_chibi_skipped, chibiSkipped)
+         val odd = found.size - verified.size
+         if (odd > 0) lines += "\n" + getString(R.string.blueos_assets_odd, odd)
+         lines += "\n" + getString(R.string.blueos_assets_done)
+@@ -437,6 +486,9 @@ class BlueOSAssetsActivity : Activity() {
+         private const val ADDED = "/data/misc/blueos"
+         private const val LIST = "/product/etc/blueos/assets-files.txt"
+         private const val SCENE = "arona_workpage_daytime"
++        /** org.blueos.arona.BlueOSMedia.CHIBI: the 0.9 chibis' .glb files under [ADDED] */
++        private const val CHIBI = "chibi"
++        private val CHIBI_NEEDS = listOf("Cafe_Idle", "Cafe_Walk")
+         private val MODE_FILE = "644".toInt(8)
+         private val MODE_DIR = "755".toInt(8)
+         /** Words in a file's name or folders that tell whose voice it is. */

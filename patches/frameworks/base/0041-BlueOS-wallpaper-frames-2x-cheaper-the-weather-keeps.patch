@@ -1,0 +1,492 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Fri, 13 Nov 2026 13:37:09 +0700
+Subject: [PATCH 41/42] BlueOS: wallpaper frames ~2x cheaper; the weather keeps
+ moving while swiping; the jelly redraws only its box
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Measured on the phone (music, «Малооблачно», equalizer glow, a chibi): every wallpaper frame took ~11 ms of the
+GPU — the surface is the picture's size (2400x3381) and each frame ran the weather's shaders on all of it, at the
+equalizer's 30 fps; a jelly frame ran the scene twice more through a full-size effect at ~60 fps.
+- Moving frames draw only the part of the surface the screen shows (the system only zooms in from there); the
+  whole surface for the engine's own frames, the last frame before resting, the picker preview, a turned screen
+  and with `setprop debug.blueos.wall.noclip 1`.
+- The weather moves on at its own pace (rain / snow ~30 fps, clouds / fog / sun ~15 fps); frames in between
+  (equalizer, jelly) show its last picture from a RenderNode layer.
+- It no longer holds still while the launcher or the shade moves: it stopped and started with a jerk.
+- The jelly redraws only the box its areas can reach (Sim.reach) through its effect, over the scene.
+Wallpaper GPU time: idle 6.8 -> 3.4 s per 20 s, swiping 7.2 -> 3.5 s, jelly + swiping 11.5 -> 5.2 s; the
+launcher's janky frames with the jelly 4.4 % -> 0 %, 95th percentile 53 -> 34 ms.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ib73a4286433e11381a50e5a95fe4c091893f43b6
+---
+ .../wallpaper/BlueOSWallpaperWeather.kt       | 314 ++++++++++++------
+ .../systemui/wallpapers/ImageWallpaper.java   |   3 +-
+ 2 files changed, 210 insertions(+), 107 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+index 838a744d288c..7e541f22eace 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+@@ -77,8 +77,8 @@ import org.blueos.arona.Weather
+  *   weather wallpapers) plus BlueOS's: storm flashes, a blizzard, and for «Малооблачно» a sun that drifting clouds
+  *   cover now and then, light shafts breaking through the gaps (approved mockup mockups/blueos-weather.html). The
+  *   weather lies OVER the blurred picture, under every widget. Only while the wallpaper is visible and the screen on;
+- *   rain and snow ~30 fps, slow clouds / fog / sun ~15 fps, held still while the launcher or the shade moves
+- *   ([busy]). Off = the plain picture as before.
++ *   rain and snow ~30 fps, slow clouds / fog / sun ~15 fps, also while the launcher or the shade moves (0.9.1, see
++ *   [doFrame]; only the part of the surface the screen shows is drawn). Off = the plain picture as before.
+  * - «Эквалайзер на обоях»: while music plays, bars or a wave along the bottom of the screen, or a glow from below
+  *   ([org.blueos.arona.BlueOSBeat]) — over the picture and the weather, under the widgets; on the lock screen also a
+  *   wave right under the clock. In the «Эквалайзер» colour role.
+@@ -166,10 +166,28 @@ class BlueOSWallpaperWeather(
+         (if (locked) jellyCfg.lock else jellyCfg.home)
+ 
+     /** 0.9: the crop of the picture the system shows for this screen (ImageWallpaper, with the picture). */
+-    fun setScreenCrop(crop: Rect?) { screenCrop = crop; handler.post { publishHome() } }
++    fun setScreenCrop(crop: Rect?) {
++        @Suppress("DEPRECATION") context.display?.getRealSize(cropFor)
++        screenCrop = crop
++        handler.post { publishHome() }
++    }
++
++    /** the screen size [screenCrop] was made for: turned another way, the live frames draw the whole surface */
++    private val cropFor = android.graphics.Point()
+ 
+     /** 0.9: the wallpaper's offset from the launcher (ImageWallpaper.onOffsetsChanged). */
+-    fun setOffset(x: Float) { xOffset = x; handler.post { publishHome() } }
++    fun setOffset(x: Float) {
++        val moved = kotlin.math.abs(x - xOffset) > .0005f
++        xOffset = x
++        handler.post {
++            publishHome()
++            // 0.9.1: the live frames draw only what the screen shows — moved, the next frame comes at once
++            if (moved) lastFrame = 0L
++        }
++    }
++
++    /** 0.9.1: the picker's preview (its own surface and crop): always the whole surface. */
++    @Volatile var preview = false
+ 
+     private var published: String? = null
+ 
+@@ -523,6 +541,7 @@ class BlueOSWallpaperWeather(
+         val p = currentPlan()
+         synchronized(lock) {
+             plan = p
++            sceneValid = false
+             if (p == null) {
+                 releaseEffect()
+             } else {
+@@ -545,6 +564,7 @@ class BlueOSWallpaperWeather(
+     /** Straight to the current look, no fade (under [lock]). */
+     private fun snapShown() {
+         fadeFrom = null
++        sceneValid = false
+         val to = target() ?: return
+         shown = to
+         foreground?.let { effect?.setBitmaps(it, to) }
+@@ -626,6 +646,7 @@ class BlueOSWallpaperWeather(
+         effect?.release()
+         effect = null
+         effectKind = NONE
++        sceneValid = false
+     }
+ 
+     private fun updateRunning() {
+@@ -642,159 +663,242 @@ class BlueOSWallpaperWeather(
+         val c = choreographer ?: Choreographer.getInstance().also { choreographer = it }
+         if (want) {
+             lastFrame = 0L
++            lastWeather = 0L
+             c.postFrameCallback(this)
+         } else {
+             c.removeFrameCallback(this)
++            synchronized(lock) { dropSceneLayer() }
+         }
+     }
+ 
+     /**
+      * 0.8: the launcher or the shade is moving (pages, «Все приложения», an app opening, the shade pulled — they move
+-     * the wallpaper's offsets / zoom): the weather holds its frame until it's calm again, so they get the GPU. With
+-     * clouds running, 68 % of the launcher's frames were late while swiping pages (3–19 % without).
++     * the wallpaper's offsets / zoom). Until 0.9.0 the weather held its frame meanwhile; the user (2026-11-13): it
++     * stopped and started again with a jerk — «вообще не красиво». Since 0.9.1 it keeps moving: a frame got ~3×
++     * cheaper instead (see [doFrame]). Only the jelly may slow to 30 fps meanwhile (`debug.blueos.wall.jelly30`).
+      */
+     fun busy() { calmAt = SystemClock.uptimeMillis() + CALM_MS }
+ 
+     @Volatile private var calmAt = 0L
+ 
++    /** when the weather's picture last moved on (its own pace, whatever the frame rate) */
++    private var lastWeather = 0L
++    private var propsAt = 0L
++    /** `adb shell setprop debug.blueos.wall.noclip 1`: the live frames draw the whole surface again (to compare) */
++    private var noClip = false
++    /** `adb shell setprop debug.blueos.wall.jelly30 1`: the jelly at 30 fps while the launcher / the shade moves */
++    private var jelly30 = false
++
+     /**
+-     * 0.8: the weather's last frame while it's held (the equalizer keeps moving over it: it froze with the weather and
+-     * looked broken while swiping pages). Made once per hold — the weather's shader isn't run again until it's calm.
++     * 0.9.1 speed (the user, 2026-11-13: «лаги видны особенно при работе физики желе»). Measured on the phone
++     * (music, «Малооблачно», equalizer glow, Haruka): every wallpaper frame took ~11 ms of the GPU — the surface is
++     * the PICTURE's size (2400×3381 here) and each frame ran the weather's shaders on all of it, 30 times a second
++     * (the equalizer's pace, though the clouds move at 15); a jelly frame ran them twice more through a full-size
++     * effect, ~60 times a second (the wallpaper's GPU 34 % → 57 %, the launcher's frames 26 → 34 ms). Now:
++     * - only the part of the surface the screen shows is drawn ([visibleBox]; the system only zooms the wallpaper
++     *   in from there): ~37 % less here;
++     * - the weather moves on at its own pace (rain / snow ~30 fps, clouds / fog / sun ~15 fps); while the equalizer
++     *   or the jelly want more frames, the frames between show the weather's last picture from a layer
++     *   ([sceneNode]) — the motion is the same, its shaders run half as often or less;
++     * - the jelly redraws only the box its areas can reach ([BlueOSJelly.Sim.reach]) through its effect, over the
++     *   scene; the weather keeps moving under and in it (0.9.0's first fix held the weather still meanwhile).
+      */
+-    private var held: Bitmap? = null
+-
+     override fun doFrame(frameTimeNanos: Long) {
+         if (!running) return
+         val c = choreographer ?: return
++        val now = SystemClock.uptimeMillis()
++        if (now - propsAt > 1000) {
++            propsAt = now
++            noClip = android.os.SystemProperties.getBoolean("debug.blueos.wall.noclip", false)
++            jelly30 = android.os.SystemProperties.getBoolean("debug.blueos.wall.jelly30", false)
++        }
+         val fading = synchronized(lock) { fadeFrom != null }
+-        // 0.9: the jelly moving (or the phone shaking it) runs at the full frame rate and is never held
+         val jelly = synchronized(lock) { jellySim?.takeIf { jellyActive() } }
+-        val shaken = jellyAx != 0f || jellyAy != 0f
+-        val jellyNow = jelly != null && (jelly.moving || shaken)
+-        if (!fading && !jellyNow && SystemClock.uptimeMillis() < calmAt) {
+-            // held still: the weather's time doesn't run either, it goes on from the same frame afterwards
+-            val eq = synchronized(lock) { eqHere() && beat.visible }
+-            val dtMs = if (lastFrame == 0L) FRAME_MS_FAST else (frameTimeNanos - lastFrame) / 1_000_000L
+-            if (eq && dtMs >= FRAME_MS_FAST) {
+-                // the equalizer on the held weather (or on the plain picture — that is cheap anyway)
+-                val noWeather = synchronized(lock) { effect == null }
+-                if (noWeather) {
+-                    render(::drawFrame)
+-                } else {
+-                    if (held == null) held = snapshot()
+-                    val h = held
+-                    if (h != null) render { cv -> synchronized(lock) { dst.set(0, 0, cv.width, cv.height); cv.drawBitmap(h, null, dst, picPaint); drawEq(cv) } }
+-                }
+-                lastFrame = frameTimeNanos
+-            } else if (!eq) {
+-                lastFrame = frameTimeNanos
+-            }
+-            c.postFrameCallback(this)
+-            return
+-        }
+-        held = null                                  // (the last posted frame may still use it: no recycle())
+-        // a lock ↔ home fade at the full frame rate; then rain / snow ~30 fps, the slow ones ~15 fps
+-        val minMs = synchronized(lock) {
+-            when {
+-                fadeFrom != null || jellyNow -> 0L
+-                effectKind == RAIN || effectKind == SNOW || (eqHere() && beat.visible) -> FRAME_MS_FAST
+-                else -> FRAME_MS_SLOW
+-            }
++        val jellyNow = jelly != null && (jelly.moving || jellyAx != 0f || jellyAy != 0f)
++        val eq = synchronized(lock) { eqHere() && beat.visible }
++        val weatherMs = synchronized(lock) { weatherMs() }
++        // the frames: a lock ↔ home fade and the jelly at the full frame rate, the equalizer ~30 fps, else the
++        // weather's own pace
++        val outMs = when {
++            fading -> 0L
++            jellyNow -> if (jelly30 && now < calmAt) FRAME_MS_FAST else 0L
++            eq -> FRAME_MS_FAST
++            // nothing moves any more (the music stopped, say): one whole frame now, then rest
++            weatherMs == Long.MAX_VALUE -> 0L
++            else -> weatherMs
+         }
+         val dtMs = if (lastFrame == 0L) 0L else (frameTimeNanos - lastFrame) / 1_000_000L
+-        if (lastFrame != 0L && dtMs < minMs) { c.postFrameCallback(this); return }
++        if (lastFrame != 0L && dtMs < outMs) { c.postFrameCallback(this); return }
+         lastFrame = frameTimeNanos
+-        t += dtMs.coerceAtMost(100L) / 1000f
+-        synchronized(lock) { effect?.update(dtMs.coerceAtMost(100L), frameTimeNanos) }
++        val wMs = if (lastWeather == 0L) 0L else (frameTimeNanos - lastWeather) / 1_000_000L
++        if (fading || lastWeather == 0L || wMs >= weatherMs) {
++            lastWeather = frameTimeNanos
++            t += wMs.coerceAtMost(100L) / 1000f
++            synchronized(lock) {
++                effect?.update(wMs.coerceAtMost(100L), frameTimeNanos)
++                sceneValid = false
++            }
++        }
+         if (jelly != null) {
+             val dt = (if (dtMs <= 0L) 16L else dtMs.coerceAtMost(50L)) / 1000f
+             synchronized(lock) { jelly.step(dt, jellyAx, jellyAy) }
+         }
+-        if (!render(::drawFrame)) { running = false; return }
+-        if (synchronized(lock) { effect == null && fadeFrom == null && !(eqHere() && beat.visible) &&
+-                !(jellyActive() && (jellySim?.moving == true || jellyAx != 0f || jellyAy != 0f)) }) {
++        val more = synchronized(lock) {
++            // the layer pays off only while frames come faster than the weather moves on
++            liveLayer = !fading && effect != null && (jellyNow || outMs < weatherMs)
++            effect != null || fadeFrom != null || (eqHere() && beat.visible) ||
++                (jellyActive() && (jellySim?.moving == true || jellyAx != 0f || jellyAy != 0f))
++        }
++        // the last frame before resting is drawn whole, like the engine's own
++        if (!render(if (more) ::drawLive else ::drawFrame) || !more) {
+             running = false
++            synchronized(lock) { dropSceneLayer() }
+             return
+         }
+         c.postFrameCallback(this)
+     }
+ 
++    /** How often the weather's picture moves on (ms); never without weather. Under [lock]. */
++    private fun weatherMs(): Long = when {
++        effect == null -> Long.MAX_VALUE
++        effectKind == RAIN || effectKind == SNOW -> FRAME_MS_FAST
++        else -> FRAME_MS_SLOW
++    }
++
+     private val dst = Rect()
+     private val paint = Paint()
+     private val picPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+ 
+     /**
+-     * One frame: the weather effect (it draws the picture too), or the plain picture without one. A lock ↔ home fade
+-     * mixes the two looks; with weather the effect switches its picture halfway, so the weather never blinks out.
++     * One whole frame: the weather effect (it draws the picture too), or the plain picture without one. A lock ↔ home
++     * fade mixes the two looks; with weather the effect switches its picture halfway, so the weather never blinks out.
++     * The engine's own frames and the last one before resting; the moving ones are [drawLive].
+      */
+     private fun drawFrame(canvas: Canvas) = synchronized(lock) {
+-        if (jellyOnScene(canvas) || drawScene(canvas)) {
++        val w = canvas.width
++        val h = canvas.height
++        if (drawScene(canvas, w, h)) {
++            drawJelly(canvas, w, h, null)
++            if (eqHere()) drawEq(canvas)
++        }
++    }
++
++    /** The scene (picture + weather) as a layer, recorded again only when the weather moved on; see [doFrame]. */
++    private val sceneNode = RenderNode("BlueOSWallScene")
++    private var sceneLayer = false
++    /** the layer holds the scene as it is now (false: the weather moved on, or the look / picture changed) */
++    private var sceneValid = false
++    private val sceneBox = Rect()
++    private val liveBox = Rect()
++    private var liveLayer = false
++
++    /** A moving frame (see [doFrame]): what the screen shows, the weather from its layer, the jelly over it. */
++    private fun drawLive(canvas: Canvas) = synchronized(lock) {
++        val w = canvas.width
++        val h = canvas.height
++        visibleBox(w, h, liveBox)
++        canvas.save()
++        canvas.clipRect(liveBox)
++        val drawn = if (liveLayer && canvas.isHardwareAccelerated) {
++            if (!sceneLayer) {
++                sceneNode.setUseCompositingLayer(true, null)
++                sceneLayer = true
++                sceneValid = false
++            }
++            if (!sceneValid || sceneBox != liveBox) {
++                sceneNode.setPosition(liveBox)
++                val rc = sceneNode.beginRecording(liveBox.width(), liveBox.height())
++                sceneValid = try {
++                    rc.translate(-liveBox.left.toFloat(), -liveBox.top.toFloat())
++                    drawScene(rc, w, h)
++                } finally { sceneNode.endRecording() }
++                sceneBox.set(liveBox)
++            }
++            if (sceneValid) canvas.drawRenderNode(sceneNode)
++            sceneValid
++        } else {
++            dropSceneLayer()
++            drawScene(canvas, w, h)
++        }
++        if (drawn) {
++            drawJelly(canvas, w, h, liveBox)
+             if (eqHere()) drawEq(canvas)
+         }
++        canvas.restore()
++    }
++
++    /** The layer is let go when it doesn't pay off or the wallpaper rests (~20 MB). Under [lock]. */
++    private fun dropSceneLayer() {
++        if (!sceneLayer) return
++        sceneLayer = false
++        sceneValid = false
++        sceneNode.setUseCompositingLayer(false, null)
++        sceneNode.discardDisplayList()
++    }
++
++    private val realSize = android.graphics.Point()
++
++    /**
++     * The surface px the screen can show now: the part of the picture on the screen ([screenPart]; the whole crop
++     * while the wallpaper scrolls). The system only zooms the wallpaper in from there (scale 1…1.1), so nothing
++     * outside it is ever seen. The whole surface when unsure (the picker's preview, no crop, the screen turned).
++     */
++    private fun visibleBox(w: Int, h: Int, out: Rect) {
++        out.set(0, 0, w, h)
++        if (noClip || preview) return
++        val src = sharp ?: return
++        val crop = screenCrop ?: return
++        @Suppress("DEPRECATION") context.display?.getRealSize(realSize) ?: return
++        if (realSize != cropFor) return
++        val part = if (jellyStill) (screenPart() ?: return) else android.graphics.RectF(crop)
++        val kx = w / src.width.toFloat()
++        val ky = h / src.height.toFloat()
++        // 2 px more: the picture's filtering at the edge
++        out.intersect(kotlin.math.floor(part.left * kx).toInt() - 2, kotlin.math.floor(part.top * ky).toInt() - 2,
++            kotlin.math.ceil(part.right * kx).toInt() + 2, kotlin.math.ceil(part.bottom * ky).toInt() + 2)
+     }
+ 
+     private var jellyNode: RenderNode? = null
++    private val jellyBox = Rect()
+ 
+     /**
+-     * The scene (picture + weather) drawn through the jelly while it moves, so the weather's haze moves with it
+-     * (2026-11-13: drawn over the scene from the plain picture, the haze vanished in the moving areas). False =
+-     * nothing moves (or no hardware canvas): draw the scene as is. Under [lock].
++     * The jelly while it moves: the scene again in the box its areas can reach, through the jelly's effect, over the
++     * scene already drawn — the weather's haze moves with the picture (2026-11-13). The box is a few % of the
++     * surface (before 0.9.1: the whole surface, twice). Under [lock].
+      */
+-    private fun jellyOnScene(canvas: Canvas): Boolean {
+-        val s = jellySim ?: return false
+-        if (!s.moving || !jellyActive() || !canvas.isHardwareAccelerated) return false
+-        val w = canvas.width
+-        val h = canvas.height
+-        val fx = jellyRenderer.effect(s, w, h) ?: return false
++    private fun drawJelly(canvas: Canvas, w: Int, h: Int, clip: Rect?) {
++        val s = jellySim ?: return
++        if (!s.moving || !jellyActive() || !canvas.isHardwareAccelerated || fadeFrom != null) return
++        val r = s.reach()
++        val kx = w / s.w
++        val ky = h / s.h
++        jellyBox.set(kotlin.math.floor(r.left * kx).toInt(), kotlin.math.floor(r.top * ky).toInt(),
++            kotlin.math.ceil(r.right * kx).toInt(), kotlin.math.ceil(r.bottom * ky).toInt())
++        if (!jellyBox.intersect(clip ?: Rect(0, 0, w, h))) return
++        val fx = jellyRenderer.effect(s, w, h, jellyBox) ?: return
+         val node = jellyNode ?: RenderNode("BlueOSJelly").also { jellyNode = it }
+-        node.setPosition(0, 0, w, h)
+-        val rc = node.beginRecording(w, h)
+-        val drawn = try { drawScene(rc) } finally { node.endRecording() }
+-        if (!drawn) return false
++        node.setPosition(jellyBox)
++        val rc = node.beginRecording(jellyBox.width(), jellyBox.height())
++        val drawn = try {
++            rc.translate(-jellyBox.left.toFloat(), -jellyBox.top.toFloat())
++            drawScene(rc, w, h)
++        } finally { node.endRecording() }
++        if (!drawn) return
+         node.setRenderEffect(fx)
+         canvas.drawRenderNode(node)
+-        return true
+     }
+ 
+-    /** The weather's current frame (no equalizer) as a hardware bitmap, or null; see [held]. */
+-    private fun snapshot(): Bitmap? = try {
+-        val w = size.width.toInt()
+-        val h = size.height.toInt()
+-        if (w <= 0 || h <= 0) null else {
+-            val buffer = HardwareBuffer.create(w, h, HardwareBuffer.RGBA_8888, 1,
+-                HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or HardwareBuffer.USAGE_GPU_COLOR_OUTPUT)
+-            val renderer = HardwareBufferRenderer(buffer)
+-            val node = RenderNode("BlueOSWallHeld").apply { setPosition(0, 0, w, h) }
+-            renderer.setContentRoot(node)
+-            val c = node.beginRecording()
+-            synchronized(lock) { drawScene(c) }
+-            node.endRecording()
+-            val done = CountDownLatch(1)
+-            var ok = false
+-            renderer.obtainRenderRequest().setColorSpace(SRGB).draw(Executor { it.run() }) { result ->
+-                ok = result.status == HardwareBufferRenderer.RenderResult.SUCCESS &&
+-                    result.fence.await(Duration.ofSeconds(1))
+-                done.countDown()
+-            }
+-            done.await(2, TimeUnit.SECONDS)
+-            renderer.close()
+-            val bmp = if (ok) Bitmap.wrapHardwareBuffer(buffer, SRGB) else null
+-            buffer.close()
+-            bmp
+-        }
+-    } catch (e: Throwable) {
+-        Log.w(TAG, "held frame failed", e)
+-        null
+-    }
+-
+-    /** Everything but the equalizer; false when there's nothing to draw yet. Under [lock]. */
+-    private fun drawScene(canvas: Canvas): Boolean {
++    /**
++     * Everything but the equalizer and the jelly, on a surface of [w]×[h] (the canvas may be a part of it); false
++     * when there's nothing to draw yet. Drawn twice with nothing changed, it draws the same. Under [lock].
++     */
++    private fun drawScene(canvas: Canvas, w: Int, h: Int): Boolean {
+         val cur = shown ?: sharp ?: return false
+         val from = fadeFrom
+         val k = if (from == null) 1f else ((SystemClock.uptimeMillis() - fadeStart) / FADE_MS.toFloat()).coerceIn(0f, 1f)
+         val fading = from != null && k < 1f
+         if (!fading) fadeFrom = null
+-        dst.set(0, 0, canvas.width, canvas.height)
++        dst.set(0, 0, w, h)
+         val e = effect
+         if (e == null) {
+             if (fading) {
+@@ -815,8 +919,8 @@ class BlueOSWallpaperWeather(
+             picPaint.alpha = 255
+         }
+         plan?.let { p ->
+-            if (p.shafts) shafts(canvas, p.intensity / .55f)
+-            if (p.storm) flash(canvas, p.intensity)
++            if (p.shafts) shafts(canvas, w.toFloat(), h.toFloat(), p.intensity / .55f)
++            if (p.storm) flash(canvas, w.toFloat(), h.toFloat(), p.intensity)
+         }
+         return true
+     }
+@@ -935,9 +1039,7 @@ class BlueOSWallpaperWeather(
+     private val shaftShader by lazy { RuntimeShader(SHAFTS) }
+     private val shaftPaint by lazy { Paint().apply { shader = shaftShader; blendMode = BlendMode.SCREEN } }
+ 
+-    private fun shafts(canvas: Canvas, amt: Float) {
+-        val w = canvas.width.toFloat()
+-        val h = canvas.height.toFloat()
++    private fun shafts(canvas: Canvas, w: Float, h: Float, amt: Float) {
+         // a cloud drifts over the sun about every 20 s and stays a few seconds
+         val occ = smooth(.25f, .85f, .5f + .5f * sin(t * 2f * PI.toFloat() / 21f)) * (.75f + .25f * sin(t * .37f))
+         // the whole picture a little dimmer while the sun is covered
+@@ -953,7 +1055,7 @@ class BlueOSWallpaperWeather(
+ 
+     // ------------------------------------------------------------- «Гроза»: the sky lights up from inside the clouds
+ 
+-    private fun flash(canvas: Canvas, amt: Float) {
++    private fun flash(canvas: Canvas, w: Float, h: Float, amt: Float) {
+         if (t > nextStrike) { strikeAt = t; nextStrike = t + 5f + (Math.random() * 7).toFloat() }
+         val d = t - strikeAt
+         val f = exp(-((d - .05f) * (d - .05f)) / .0012f) * .9f + exp(-((d - .3f) * (d - .3f)) / .004f) * .6f +
+@@ -961,7 +1063,7 @@ class BlueOSWallpaperWeather(
+         val a = (f * .55f * amt).coerceIn(0f, .8f)
+         if (a < .01f) return
+         paint.color = Color.argb((a * 255).toInt(), 214, 222, 255)
+-        canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), paint)
++        canvas.drawRect(0f, 0f, w, h, paint)
+     }
+ 
+     private fun smooth(e0: Float, e1: Float, x: Float): Float {
+diff --git a/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java b/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
+index 216c9e7b38bc..1d467fb0607e 100644
+--- a/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
++++ b/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
+@@ -216,8 +216,9 @@ public class ImageWallpaper extends WallpaperService {
+                         blueOSFeedWeather();
+                         return kotlin.Unit.INSTANCE;
+                     });
++            mBlueOSWeather.setPreview(isPreview());
+             mBlueOSWeather.attach();
+-            mBlueOSKeyguard = new com.android.systemui.statusbar.policy.KeyguardStateController.Callback() {
++            mBlueOSKeyguard =new com.android.systemui.statusbar.policy.KeyguardStateController.Callback() {
+                 @Override
+                 public void onKeyguardShowingChanged() {
+                     blueOSLocked();

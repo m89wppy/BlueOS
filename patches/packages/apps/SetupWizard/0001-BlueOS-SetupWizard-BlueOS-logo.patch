@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sat, 24 Oct 2026 13:02:15 +0200
-Subject: [PATCH 1/5] BlueOS: SetupWizard: BlueOS logo
+Subject: [PATCH 1/6] BlueOS: SetupWizard: BlueOS logo
 
 Welcome and finish screens show the BlueOS logo in the system (Monet) colors instead of the LineageOS one (vendor/blueos/tools/make-logo-assets.py).
 

@@ -1,0 +1,543 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 22:47:31 +0700
+Subject: [PATCH 38/42] BlueOS: jelly wallpaper areas, lobby fingerprint
+ setting, lobby clock when turned sideways
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I4e4f6fa4dd04174ef5e569f9696d113d4928d682
+---
+ .../keyguard/KeyguardUpdateMonitor.java       |  10 +-
+ .../systemui/blueos/lobby/BlueOSLobbyHost.kt  |  57 ++++++-
+ .../lockscreen/BlueOSCharacterSection.kt      |   8 +
+ .../wallpaper/BlueOSWallpaperWeather.kt       | 151 +++++++++++++++++-
+ ...NotificationShadeWindowViewController.java |   2 +
+ .../systemui/wallpapers/ImageWallpaper.java   |  27 +++-
+ 6 files changed, 239 insertions(+), 16 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index 2fc69dafed82..56eac8fdbadf 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -2765,6 +2765,12 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, CoreSt
+         mHandler.sendEmptyMessage(MSG_AIRPLANE_MODE_CHANGED);
+     }
+ 
++    {
++        // BlueOS 0.9: the lobby opened or closed with «Отпечаток в лобби» = only on the lock screen
++        com.android.systemui.blueos.lobby.BlueOSLobby.setFingerprintChanged(() -> KeyguardUpdateMonitor.this.mHandler.post(
++                () -> updateFingerprintListeningState(BIOMETRIC_ACTION_UPDATE)));
++    }
++
+     private void updateFingerprintListeningState(int action) {
+         // If this message exists, we should not authenticate again until this message is
+         // consumed by the handler
+@@ -3152,7 +3158,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, CoreSt
+ 
+         boolean shouldListen = shouldListenKeyguardState && shouldListenUserState
+                 && shouldListenBouncerState && shouldListenUdfpsState && !mBiometricPromptShowing
+-                && shouldListenSecureLockDeviceState && shouldListenFpsState;
++                && shouldListenSecureLockDeviceState && shouldListenFpsState
++                // BlueOS 0.9: «Отпечаток в лобби» = only on the lock screen: the sensor sleeps under the lobby
++                && !com.android.systemui.blueos.lobby.BlueOSLobby.getBlocksFingerprint();
+         logListenerModelData(
+                 new KeyguardFingerprintListenModel(
+                     System.currentTimeMillis(),
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+index 1cfdc22a4c8a..a8c1bea3c160 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+@@ -56,6 +56,24 @@ import org.blueos.arona.BlueOSSettings as K
+ object BlueOSLobby {
+     internal var host: LobbyHost? = null
+ 
++    /**
++     * True while the lobby is out and «Отпечаток в лобби» says the sensor sleeps there: KeyguardUpdateMonitor
++     * .shouldListenForFingerprint stops listening (a finger on the sensor's spot is a touch on her, nothing unlocks).
++     */
++    @JvmStatic @Volatile var blocksFingerprint = false
++        internal set
++    /** The lobby is out (even partly): the wallpaper under it doesn't take the lock screen's fingers. */
++    @JvmStatic val isOpen get() = host?.isOut == true
++
++    /** KeyguardUpdateMonitor re-checks its fingerprint listening when [blocksFingerprint] changes. */
++    @JvmStatic var fingerprintChanged: Runnable? = null
++
++    internal fun blockFingerprint(b: Boolean) {
++        if (blocksFingerprint == b) return
++        blocksFingerprint = b
++        fingerprintChanged?.run()
++    }
++
+     /** True = the touch is the lobby's (nobody else gets it). [cancel] cancels a touch the shade already has. */
+     @JvmStatic
+     fun onTouchEvent(ev: MotionEvent, cancel: Runnable): Boolean = host?.onShadeTouch(ev, cancel) ?: false
+@@ -128,6 +146,9 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+     private val main = Handler(Looper.getMainLooper())
+ 
+     val lobby = BlueOSLobbyView(context).apply { active = false }
++    /** The clock and its gradient, laid out in the scene's frame: turned with it when the scene is sideways. */
++    private val overlay = FrameLayout(context)
++    private var overlayTurn = 0f
+     private val shade = View(context)                      // the soft dark gradient under the clock
+     private val clockBox = LinearLayout(context)
+     private val time = TextClock(context)
+@@ -146,6 +167,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+     private var enabled = true
+     private var clockMode = 2
+     private var fpIcon = true
++    private var fpUnlock = false
+     private var autohide = false
+     /** the screen while the lobby is open: 0 goes off as usual, 1 stays on while charging, 2 always ([K.LOBBY_AWAKE]) */
+     private var awakeMode = 0
+@@ -155,6 +177,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+ 
+     /** 0 = the lock screen, 1 = the lobby fully in. */
+     private var progress = 0f
++    internal val isOut get() = progress > 0f
+     private var settle: ValueAnimator? = null
+ 
+     init {
+@@ -162,7 +185,8 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         addView(lobby, LayoutParams(-1, -1))
+         shade.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+             intArrayOf(0x66000000, 0x26000000, 0x00000000))
+-        addView(shade, LayoutParams(-1, (190 * dp).toInt(), Gravity.TOP))
++        addView(overlay, LayoutParams(-1, -1, Gravity.CENTER))
++        overlay.addView(shade, LayoutParams(-1, (190 * dp).toInt(), Gravity.TOP))
+         clockBox.orientation = LinearLayout.VERTICAL
+         time.apply {
+             setTextColor(Color.WHITE)
+@@ -180,7 +204,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         }
+         clockBox.addView(time, LinearLayout.LayoutParams(-2, -2))
+         clockBox.addView(date, LinearLayout.LayoutParams(-2, -2).apply { topMargin = (4 * dp).toInt() })
+-        addView(clockBox, LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
++        overlay.addView(clockBox, LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+             leftMargin = (28 * dp).toInt(); topMargin = (62 * dp).toInt()
+         })
+     }
+@@ -194,6 +218,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+     } }
+ 
+     fun release() {
++        BlueOSLobby.blockFingerprint(false)
+         context.contentResolver.unregisterContentObserver(observer)
+         try { context.unregisterReceiver(power) } catch (_: IllegalArgumentException) {}
+         window.viewTreeObserver.removeOnPreDrawListener(preDraw)
+@@ -206,6 +231,8 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         enabled = K.int(cr, K.LOBBY_ON) != 0
+         clockMode = K.int(cr, K.LOBBY_CLOCK).coerceIn(0, 2)
+         fpIcon = K.int(cr, K.LOBBY_FP) != 0
++        fpUnlock = K.int(cr, K.LOBBY_FP_UNLOCK) != 0
++        BlueOSLobby.blockFingerprint(progress > 0f && !fpUnlock)
+         autohide = K.int(cr, K.LOBBY_AUTOHIDE) != 0
+         awakeMode = K.int(cr, K.LOBBY_AWAKE).coerceIn(0, 2)
+         updateKeepOn()
+@@ -409,18 +436,20 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         }
+         if (visibility != VISIBLE) visibility = VISIBLE
+         updateKeepOn()
++        BlueOSLobby.blockFingerprint(!fpUnlock)
+         val me = (progress - 1f) * w
+         if (translationX != me) translationX = me
+         val shift = progress * w
+         for (v in lockViews()) if (v.translationX != shift) v.translationX = shift
+         if (!lobby.sideways) window.findViewById<View>(R.id.keyguard_header)?.let { if (it.translationX != 0f) it.translationX = 0f }
+-        // the portrait clock over a sideways scene would be on its side: only when upright
+-        val cv = if (clockMode == 0 || lobby.sideways) GONE else VISIBLE
++        // 0.9: the clock turns with a sideways scene (it was hidden there): in its top-left corner, under no status bar
++        turnOverlay(lobby.turn)
++        val cv = if (clockMode == 0) GONE else VISIBLE
+         if (clockBox.visibility != cv) { clockBox.visibility = cv; shade.visibility = cv }
+         moved = true
+         // the fingerprint icon stays where it is, over the lobby (it is in the keyguard root, which slides away)
+         keyguardRoot.findViewById<View>(R.id.device_entry_icon_view)?.let { icon ->
+-            val stay = if (fpIcon && !hidden) -shift else 0f
++            val stay = if (fpIcon && fpUnlock && !hidden) -shift else 0f
+             if (icon.translationX != stay) icon.translationX = stay
+         }
+         // the shade, the bouncer and unlocking fade the lock screen: the lobby fades with it
+@@ -429,10 +458,28 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         lobby.active = a > 0.01f
+     }
+ 
++    /** Lays the clock out as the scene sees the screen ([turn] degrees clockwise, as BlueOSLobbyView draws). */
++    private fun turnOverlay(turn: Float) {
++        val side = turn != 0f
++        // sideways: a box as big as the scene (the screen's height × width) in the middle, turned like it
++        val w = if (side) height else -1
++        val h = if (side) width else -1
++        if (turn == overlayTurn && overlay.layoutParams.width == w && overlay.layoutParams.height == h) return
++        overlayTurn = turn
++        overlay.layoutParams = (overlay.layoutParams as LayoutParams).also { it.width = w; it.height = h }
++        overlay.rotation = turn
++        // sideways the portrait status bar has slid away: the clock goes up to the scene's top edge
++        (clockBox.layoutParams as LayoutParams).let { lp ->
++            val top = ((if (side) 28 else 62) * dp).toInt()
++            if (lp.topMargin != top) { lp.topMargin = top; clockBox.layoutParams = lp }
++        }
++    }
++
+     private fun restoreLockScreen() {
+         visibility = INVISIBLE
+         lobby.active = false
+         updateKeepOn()
++        BlueOSLobby.blockFingerprint(false)
+         translationX = 0f
+         if (!moved) return
+         moved = false
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
+index cbaa7afe9d30..526028dc728f 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
+@@ -237,6 +237,14 @@ private class AronaHost(context: Context) : FrameLayout(context), BlueOSMotion.L
+         unGaze = AronaGaze.add { a, x, y ->
+             if (showing && awake && !dozing && arona.visibility == VISIBLE) touch.gaze(a, x, y)
+         }
++        // 0.9 «Желе на обоях»: a finger on her is hers, not the wallpaper's
++        org.blueos.arona.BlueOSJelly.LockTouch.blocked = { x, y ->
++            arona.visibility == VISIBLE && arona.isShown && run {
++                val l = IntArray(2)
++                arona.getLocationOnScreen(l)
++                x >= l[0] && x < l[0] + arona.width && y >= l[1] && y < l[1] + arona.height
++            }
++        }
+     }
+ 
+     fun release() {
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+index 331d56052f45..8d42f3a866de 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+@@ -30,6 +30,10 @@ import android.graphics.RenderNode
+ import android.graphics.RuntimeShader
+ import android.graphics.Shader
+ import android.hardware.HardwareBuffer
++import android.hardware.Sensor
++import android.hardware.SensorEvent
++import android.hardware.SensorEventListener
++import android.hardware.SensorManager
+ import android.hardware.display.DisplayManager
+ import android.os.Handler
+ import android.os.SystemClock
+@@ -56,6 +60,7 @@ import kotlin.math.PI
+ import kotlin.math.exp
+ import kotlin.math.max
+ import kotlin.math.sin
++import org.blueos.arona.BlueOSJelly
+ import org.blueos.arona.BlueOSSettings as K
+ import org.blueos.arona.Weather
+ 
+@@ -77,6 +82,10 @@ import org.blueos.arona.Weather
+  * - «Эквалайзер на обоях»: while music plays, bars or a wave along the bottom of the screen, or a glow from below
+  *   ([org.blueos.arona.BlueOSBeat]) — over the picture and the weather, under the widgets; on the lock screen also a
+  *   wave right under the clock. In the «Эквалайзер» colour role.
++ * - 0.9 «Желе на обоях» ([BlueOSJelly], approved mockup mockups/blueos-0.9-wiggle.html): the areas the user marked
++ *   on this picture spring like jelly — the phone's own acceleration (linear accelerometer, only while the wallpaper
++ *   shows with the screen on) and a finger (lock screen: the shade window's touches, not on the character and not
++ *   under the lobby; home screen: the launcher's commands for touches on empty space). Frames only while it moves.
+  *
+  * Settings and the weather loop run on the engine's own thread ([handler]); [render] locks the wallpaper surface,
+  * draws, posts. The engine's own frames come through [drawInto] from its loader thread — state is under [lock], and
+@@ -131,9 +140,103 @@ class BlueOSWallpaperWeather(
+     }
+ 
+     /** On: we need the picture (the engine hands a copy over when it loads it). */
+-    val wanted get() = K.on(cr, K.WALL_WEATHER) || K.int(cr, K.WALL_EQ) != 0 ||
++    val wanted get() = K.on(cr, K.WALL_WEATHER) || K.int(cr, K.WALL_EQ) != 0 || jellyCfg.any ||
+         looks().let { !it.first.plain || !it.second.plain }
+ 
++    // ------------------------------------------------------------- 0.9 «Желе на обоях»
++    @Volatile private var jellyCfg = BlueOSJelly.read(cr)
++    /** which picture this engine shows ([BlueOSJelly.picKey]) */
++    @Volatile private var jellyKey: String? = null
++    private var jellySim: BlueOSJelly.Sim? = null
++    private val jellyRenderer by lazy { BlueOSJelly.Renderer() }
++    @Volatile private var jellyAx = 0f
++    @Volatile private var jellyAy = 0f
++    private var sensorOn = false
++    private val sensors by lazy { context.getSystemService(SensorManager::class.java) }
++
++    /** Areas on this picture, and the screen showing now wants them. Under [lock] or on [handler]. */
++    private fun jellyActive() = jellySim != null && jellyCfg.on && (if (locked) jellyCfg.lock else jellyCfg.home)
++
++    /** The areas (and their soft masks) for the picture now: again when the picture or the settings change. */
++    private fun rebuildJelly() {
++        val src = synchronized(lock) { sharp }
++        val areas = if (jellyCfg.on) jellyCfg.areas(jellyKey) else emptyList()
++        if (src == null || areas.isEmpty()) {
++            synchronized(lock) { jellySim = null }
++        } else {
++            val masks = try { BlueOSJelly.masks(areas, src.width, src.height) } catch (e: Throwable) { Log.w(TAG, "jelly masks", e); null }
++            synchronized(lock) {
++                jellySim = masks?.let { BlueOSJelly.Sim(areas, src.width.toFloat(), src.height.toFloat()) }
++                jellyRenderer.setMasks(masks)
++            }
++        }
++        updateSensor()
++    }
++
++    /** The phone's own acceleration — only while the jelly can show it (the wallpaper visible, the screen on). */
++    private fun updateSensor() {
++        val want = visible && screenOn && synchronized(lock) { jellyActive() && jellySim?.areas?.any { it.motion } == true }
++        if (want == sensorOn) return
++        sensorOn = want
++        val sm = sensors ?: return
++        if (want) {
++            sm.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)?.let { sm.registerListener(accel, it, SensorManager.SENSOR_DELAY_GAME, handler) }
++        } else {
++            sm.unregisterListener(accel)
++            jellyAx = 0f; jellyAy = 0f
++        }
++    }
++
++    private val accel = object : SensorEventListener {
++        override fun onSensorChanged(e: SensorEvent) {
++            // the device's x right / y up → the screen's x right / y down (home and lock screen are upright)
++            var ax = e.values[0]
++            var ay = -e.values[1]
++            if (kotlin.math.hypot(ax, ay) < BlueOSJelly.DEADZONE) { ax = 0f; ay = 0f }
++            jellyAx = ax; jellyAy = ay
++            if ((ax != 0f || ay != 0f) && !running) updateRunning()
++        }
++        override fun onAccuracyChanged(s: Sensor?, accuracy: Int) {}
++    }
++
++    private val screenSize = android.graphics.Point()
++
++    /** A finger on the lock screen ([fromLock]) or the home screen (the launcher's command), screen px. */
++    private fun jellyTouch(action: Int, x: Float, y: Float, fromLock: Boolean, blocked: Boolean) {
++        val started = synchronized(lock) {
++            val sim = jellySim ?: return
++            if (!jellyActive() || fromLock != locked) { sim.up(); return }
++            @Suppress("DEPRECATION") context.display?.getRealSize(screenSize)
++            val px = x * sim.w / screenSize.x.coerceAtLeast(1)
++            val py = y * sim.h / screenSize.y.coerceAtLeast(1)
++            when (action) {
++                android.view.MotionEvent.ACTION_DOWN -> !blocked && sim.down(px, py)
++                android.view.MotionEvent.ACTION_MOVE -> { sim.move(px, py); false }
++                else -> { sim.up(); false }
++            }
++        }
++        if (started) updateRunning()
++    }
++
++    /** The launcher's [BlueOSJelly.CMD_DOWN] / [BlueOSJelly.CMD_MOVE] / [BlueOSJelly.CMD_UP] (from ImageWallpaper.onCommand). */
++    fun jellyCommand(action: String, x: Int, y: Int) {
++        val a = when (action) {
++            BlueOSJelly.CMD_DOWN -> android.view.MotionEvent.ACTION_DOWN
++            BlueOSJelly.CMD_MOVE -> android.view.MotionEvent.ACTION_MOVE
++            else -> android.view.MotionEvent.ACTION_UP
++        }
++        handler.post { jellyTouch(a, x.toFloat(), y.toFloat(), fromLock = false, blocked = false) }
++    }
++
++    /** The jelly over the scene while it moves (at rest the picture underneath is the same). Under [lock]. */
++    private fun drawJelly(canvas: Canvas) {
++        val s = jellySim ?: return
++        if (!s.moving || !jellyActive()) return
++        val pic = shown ?: sharp ?: return
++        dst.set(0, 0, canvas.width, canvas.height)
++        jellyRenderer.draw(canvas, pic, dst, s)
++    }
++
+     // «Эквалайзер на обоях», read once per change (not per frame)
+     private val beat = org.blueos.arona.BlueOSBeat
+     @Volatile private var eqWhere = 0
+@@ -169,6 +272,7 @@ class BlueOSWallpaperWeather(
+             if (on == screenOn) return
+             screenOn = on
+             if (!on) finishFade()
++            updateSensor()
+             updateRunning()
+         }
+     }
+@@ -189,6 +293,16 @@ class BlueOSWallpaperWeather(
+             handler.post { update(reprocess = true) }
+         }
+         context.getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
++        unobserve += K.observe(context, listOf(BlueOSJelly.KEY)) {
++            handler.post { jellyCfg = BlueOSJelly.read(cr); rebuildJelly(); update(reprocess = false) }
++        }
++        // the lock screen's fingers: whether one is on the character / under the lobby is asked right away (main thread)
++        unobserve += BlueOSJelly.LockTouch.add { a, x, y ->
++            val lobby = com.android.systemui.blueos.lobby.BlueOSLobby.isOpen
++            val blocked = lobby || (a == android.view.MotionEvent.ACTION_DOWN && BlueOSJelly.LockTouch.blocked?.invoke(x, y) == true)
++            if (lobby && a == android.view.MotionEvent.ACTION_DOWN) return@add
++            handler.post { jellyTouch(a, x, y, fromLock = true, blocked = blocked) }
++        }
+         handler.post { update(reprocess = false) }
+     }
+ 
+@@ -197,6 +311,8 @@ class BlueOSWallpaperWeather(
+         unobserve.clear()
+         context.getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
+         handler.post {
++            visible = false
++            updateSensor()
+             setRunning(false)
+             synchronized(lock) {
+                 releaseEffect()
+@@ -209,7 +325,8 @@ class BlueOSWallpaperWeather(
+      * The picture, as the engine loaded it — copied now (the engine recycles its own after drawing) and its home /
+      * lock looks made right away, so the engine's own frame that follows is already the right one.
+      */
+-    fun setBitmap(picture: Bitmap, surfaceWidth: Int, surfaceHeight: Int) {
++    fun setBitmap(picture: Bitmap, surfaceWidth: Int, surfaceHeight: Int, picKey: String?) {
++        jellyKey = picKey
+         val copy = try { picture.copy(Bitmap.Config.ARGB_8888, false) } catch (e: Throwable) { null } ?: return
+         val (home, lck) = make(copy)
+         synchronized(lock) {
+@@ -222,7 +339,7 @@ class BlueOSWallpaperWeather(
+             releaseEffect()
+             snapShown()
+         }
+-        handler.post { update(reprocess = false) }
++        handler.post { rebuildJelly(); update(reprocess = false) }
+     }
+ 
+     /** The lock screen shows (or the unlock is under way = home). */
+@@ -232,6 +349,7 @@ class BlueOSWallpaperWeather(
+                 if (locked == l) return@post
+                 locked = l
+                 eqColorAt = 0L
++                jellySim?.up()
+                 // the look may stay the same while the equalizer comes or goes: run / draw anyway
+                 val to = target()
+                 if (to != null && to !== shown) {
+@@ -244,6 +362,7 @@ class BlueOSWallpaperWeather(
+                     }
+                 }
+             }
++            updateSensor()
+             updateRunning()
+             if (!running) render(::drawFrame)
+         }
+@@ -253,6 +372,7 @@ class BlueOSWallpaperWeather(
+         handler.post {
+             visible = v
+             if (!v) finishFade()
++            updateSensor()
+             updateRunning()
+         }
+     }
+@@ -420,7 +540,10 @@ class BlueOSWallpaperWeather(
+     }
+ 
+     private fun updateRunning() {
+-        val busy = synchronized(lock) { effect != null || fadeFrom != null || (sharp != null && eqHere() && beat.visible) }
++        val busy = synchronized(lock) {
++            effect != null || fadeFrom != null || (sharp != null && eqHere() && beat.visible) ||
++                (jellyActive() && (jellySim?.moving == true || jellyAx != 0f || jellyAy != 0f))
++        }
+         setRunning(visible && screenOn && busy)
+     }
+ 
+@@ -455,7 +578,11 @@ class BlueOSWallpaperWeather(
+         if (!running) return
+         val c = choreographer ?: return
+         val fading = synchronized(lock) { fadeFrom != null }
+-        if (!fading && SystemClock.uptimeMillis() < calmAt) {
++        // 0.9: the jelly moving (or the phone shaking it) runs at the full frame rate and is never held
++        val jelly = synchronized(lock) { jellySim?.takeIf { jellyActive() } }
++        val shaken = jellyAx != 0f || jellyAy != 0f
++        val jellyNow = jelly != null && (jelly.moving || shaken)
++        if (!fading && !jellyNow && SystemClock.uptimeMillis() < calmAt) {
+             // held still: the weather's time doesn't run either, it goes on from the same frame afterwards
+             val eq = synchronized(lock) { eqHere() && beat.visible }
+             val dtMs = if (lastFrame == 0L) FRAME_MS_FAST else (frameTimeNanos - lastFrame) / 1_000_000L
+@@ -480,7 +607,7 @@ class BlueOSWallpaperWeather(
+         // a lock ↔ home fade at the full frame rate; then rain / snow ~30 fps, the slow ones ~15 fps
+         val minMs = synchronized(lock) {
+             when {
+-                fadeFrom != null -> 0L
++                fadeFrom != null || jellyNow -> 0L
+                 effectKind == RAIN || effectKind == SNOW || (eqHere() && beat.visible) -> FRAME_MS_FAST
+                 else -> FRAME_MS_SLOW
+             }
+@@ -490,8 +617,13 @@ class BlueOSWallpaperWeather(
+         lastFrame = frameTimeNanos
+         t += dtMs.coerceAtMost(100L) / 1000f
+         synchronized(lock) { effect?.update(dtMs.coerceAtMost(100L), frameTimeNanos) }
++        if (jelly != null) {
++            val dt = (if (dtMs <= 0L) 16L else dtMs.coerceAtMost(50L)) / 1000f
++            synchronized(lock) { jelly.step(dt, jellyAx, jellyAy) }
++        }
+         if (!render(::drawFrame)) { running = false; return }
+-        if (synchronized(lock) { effect == null && fadeFrom == null && !(eqHere() && beat.visible) }) {
++        if (synchronized(lock) { effect == null && fadeFrom == null && !(eqHere() && beat.visible) &&
++                !(jellyActive() && (jellySim?.moving == true || jellyAx != 0f || jellyAy != 0f)) }) {
+             running = false
+             return
+         }
+@@ -507,7 +639,10 @@ class BlueOSWallpaperWeather(
+      * mixes the two looks; with weather the effect switches its picture halfway, so the weather never blinks out.
+      */
+     private fun drawFrame(canvas: Canvas) = synchronized(lock) {
+-        if (drawScene(canvas) && eqHere()) drawEq(canvas)
++        if (drawScene(canvas)) {
++            drawJelly(canvas)
++            if (eqHere()) drawEq(canvas)
++        }
+     }
+ 
+     /** The weather's current frame (no equalizer) as a hardware bitmap, or null; see [held]. */
+diff --git a/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java b/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
+index f15a205bd495..aa09b62c6a1a 100644
+--- a/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
+@@ -458,6 +458,8 @@ public class NotificationShadeWindowViewController implements Dumpable {
+                 mFalsingCollector.onTouchEvent(ev);
+                 // BlueOS 0.7.1: Arona looks where Sensei touches (observed, never consumed)
+                 org.blueos.arona.AronaGaze.dispatch(ev);
++                // BlueOS 0.9: «Желе на обоях» follows a finger on the lock screen (observed, never consumed)
++                org.blueos.arona.BlueOSJelly.LockTouch.dispatch(ev);
+                 mQQSGestureHandler.onTouchEvent(ev);
+                 // Pass touch events to the pulsing gesture listener only if it's dozing,
+                 // otherwise lockscreen DT2S and AOD DT2W will conflict.
+diff --git a/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java b/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
+index b213849d8471..35079078d5b2 100644
+--- a/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
++++ b/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
+@@ -289,8 +289,20 @@ public class ImageWallpaper extends WallpaperService {
+                 if (mSurfaceHolder == null) return;
+                 frame = mSurfaceHolder.getSurfaceFrame();
+             }
+-            // makes the home / lock looks on the GPU right here, before the engine draws its frame
+-            mBlueOSWeather.setBitmap(bitmap, frame.width(), frame.height());
++            // makes the home / lock looks on the GPU right here, before the engine draws its frame; 0.9: which picture
++            // it is, for «Желе на обоях» (the areas belong to one picture)
++            String jellyKey = null;
++            try {
++                // the id of one kind only (a picture on both screens is the home one)
++                int src = getSourceFlag();
++                int one = (src & WallpaperManager.FLAG_LOCK) != 0 && (src & WallpaperManager.FLAG_SYSTEM) == 0
++                        ? WallpaperManager.FLAG_LOCK : WallpaperManager.FLAG_SYSTEM;
++                jellyKey = org.blueos.arona.BlueOSJelly.INSTANCE.picKey(one,
++                        mWallpaperManager.getWallpaperIdForUser(one, mUserTracker.getUserId()));
++            } catch (RuntimeException e) {
++                Log.w(TAG, "wallpaper id", e);
++            }
++            mBlueOSWeather.setBitmap(bitmap, frame.width(), frame.height(), jellyKey);
+         }
+ 
+         @Override
+@@ -298,6 +310,17 @@ public class ImageWallpaper extends WallpaperService {
+             if (mBlueOSWeather != null) mBlueOSWeather.setVisible(visible);
+         }
+ 
++        // BlueOS 0.9 «Желе на обоях»: a finger on the home screen's empty space (the launcher's commands)
++        @Override
++        public android.os.Bundle onCommand(String action, int x, int y, int z, android.os.Bundle extras,
++                boolean resultRequested) {
++            if (mBlueOSWeather != null && action != null && action.startsWith("org.blueos.jelly.")) {
++                mBlueOSWeather.jellyCommand(action, x, y);
++                return null;
++            }
++            return super.onCommand(action, x, y, z, extras, resultRequested);
++        }
++
+         // BlueOS 0.8: the launcher / shade zooms the wallpaper (an app opening, «Все приложения», the shade):
+         // the weather holds still meanwhile, the animation gets the GPU
+         @Override

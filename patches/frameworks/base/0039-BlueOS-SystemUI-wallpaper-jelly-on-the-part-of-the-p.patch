@@ -1,0 +1,197 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 23:24:30 +0700
+Subject: [PATCH 39/42] BlueOS: SystemUI: wallpaper jelly on the part of the
+ picture the screen shows, stronger motion, only on a still wallpaper
+
+Fingers were mapped onto the whole picture's width (a wide picture: 1.6x off); the
+motion push was ~8x weaker than the approved mockup. The engine now gets the crop the
+system shows (getBitmapCrops) and the launcher's offset, logs the jelly's state and
+takes adb shell am broadcast -a org.blueos.debug.JELLY_POKE (shell only) for tests.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I89ed784f647ff7d0ce2fdc39ed8ef6caeea840a9
+---
+ .../wallpaper/BlueOSWallpaperWeather.kt       | 80 +++++++++++++++++--
+ .../systemui/wallpapers/ImageWallpaper.java   | 31 +++++--
+ 2 files changed, 99 insertions(+), 12 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+index 8d42f3a866de..09c49e0d7230 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/wallpaper/BlueOSWallpaperWeather.kt
+@@ -154,8 +154,33 @@ class BlueOSWallpaperWeather(
+     private var sensorOn = false
+     private val sensors by lazy { context.getSystemService(SensorManager::class.java) }
+ 
++    /** «Прокрутка обоев» off: the jelly works only on a still wallpaper ([BlueOSJelly.allowed]). */
++    @Volatile private var jellyStill = BlueOSJelly.allowed(cr)
++    /** What the system shows of this picture for the screen (picture px, may be wider: scrolling) — see [screenPart]. */
++    @Volatile private var screenCrop: Rect? = null
++    /** the launcher's wallpaper offset (0.5 while the wallpaper is still) */
++    @Volatile private var xOffset = .5f
++
+     /** Areas on this picture, and the screen showing now wants them. Under [lock] or on [handler]. */
+-    private fun jellyActive() = jellySim != null && jellyCfg.on && (if (locked) jellyCfg.lock else jellyCfg.home)
++    private fun jellyActive() = jellySim != null && jellyCfg.on && jellyStill &&
++        (if (locked) jellyCfg.lock else jellyCfg.home)
++
++    /** 0.9: the crop of the picture the system shows for this screen (ImageWallpaper, with the picture). */
++    fun setScreenCrop(crop: Rect?) { screenCrop = crop }
++
++    /** 0.9: the wallpaper's offset from the launcher (ImageWallpaper.onOffsetsChanged). */
++    fun setOffset(x: Float) { xOffset = x }
++
++    /**
++     * The part of the picture on the screen now, picture px; null = unknown (the whole picture's width is taken as
++     * the screen's, as in 0.9.0 — that put a finger 1.6× off on a wide picture).
++     */
++    private fun screenPart(): android.graphics.RectF? {
++        val crop = screenCrop ?: return null
++        @Suppress("DEPRECATION") context.display?.getRealSize(screenSize) ?: return null
++        if (screenSize.x <= 0 || screenSize.y <= 0) return null
++        return BlueOSJelly.visible(crop, screenSize.x, screenSize.y, xOffset)
++    }
+ 
+     /** The areas (and their soft masks) for the picture now: again when the picture or the settings change. */
+     private fun rebuildJelly() {
+@@ -165,11 +190,16 @@ class BlueOSWallpaperWeather(
+             synchronized(lock) { jellySim = null }
+         } else {
+             val masks = try { BlueOSJelly.masks(areas, src.width, src.height) } catch (e: Throwable) { Log.w(TAG, "jelly masks", e); null }
++            // the strengths are in screen px: picture px per screen px of the part on the screen
++            val part = screenPart()
++            val unit = if (part != null) part.width() / screenSize.x.coerceAtLeast(1) else src.width / 1080f
+             synchronized(lock) {
+-                jellySim = masks?.let { BlueOSJelly.Sim(areas, src.width.toFloat(), src.height.toFloat()) }
++                jellySim = masks?.let { BlueOSJelly.Sim(areas, src.width.toFloat(), src.height.toFloat(), unit) }
+                 jellyRenderer.setMasks(masks)
+             }
+         }
++        Log.i(TAG, "jelly: pic=$jellyKey on=${jellyCfg.on} still=$jellyStill lock=${jellyCfg.lock} home=${jellyCfg.home} " +
++            "areas=${areas.size} picture=${src?.width}x${src?.height} screen=${screenPart()} ready=${jellySim != null}")
+         updateSensor()
+     }
+ 
+@@ -206,9 +236,17 @@ class BlueOSWallpaperWeather(
+         val started = synchronized(lock) {
+             val sim = jellySim ?: return
+             if (!jellyActive() || fromLock != locked) { sim.up(); return }
+-            @Suppress("DEPRECATION") context.display?.getRealSize(screenSize)
+-            val px = x * sim.w / screenSize.x.coerceAtLeast(1)
+-            val py = y * sim.h / screenSize.y.coerceAtLeast(1)
++            val part = screenPart()
++            val px: Float
++            val py: Float
++            if (part != null) {
++                px = part.left + x / screenSize.x * part.width()
++                py = part.top + y / screenSize.y * part.height()
++            } else {
++                @Suppress("DEPRECATION") context.display?.getRealSize(screenSize)
++                px = x * sim.w / screenSize.x.coerceAtLeast(1)
++                py = y * sim.h / screenSize.y.coerceAtLeast(1)
++            }
+             when (action) {
+                 android.view.MotionEvent.ACTION_DOWN -> !blocked && sim.down(px, py)
+                 android.view.MotionEvent.ACTION_MOVE -> { sim.move(px, py); false }
+@@ -293,8 +331,35 @@ class BlueOSWallpaperWeather(
+             handler.post { update(reprocess = true) }
+         }
+         context.getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
+-        unobserve += K.observe(context, listOf(BlueOSJelly.KEY)) {
+-            handler.post { jellyCfg = BlueOSJelly.read(cr); rebuildJelly(); update(reprocess = false) }
++        unobserve += K.observe(context, listOf(BlueOSJelly.KEY, K.WALL_SCROLL)) {
++            handler.post {
++                jellyCfg = BlueOSJelly.read(cr)
++                jellyStill = BlueOSJelly.allowed(cr)
++                rebuildJelly()
++                update(reprocess = false)
++            }
++        }
++        // testing without shaking the phone (shell only — it holds DUMP):
++        // adb shell am broadcast -a org.blueos.debug.JELLY_POKE --ef vx 0 --ef vy 2500
++        val poke = object : android.content.BroadcastReceiver() {
++            override fun onReceive(c: Context, i: android.content.Intent) {
++                handler.post {
++                    val ok = synchronized(lock) {
++                        val s = jellySim?.takeIf { jellyActive() }
++                        s?.poke(i.getFloatExtra("vx", 0f), i.getFloatExtra("vy", 2500f))
++                        s != null
++                    }
++                    Log.i(TAG, "jelly poke: ${if (ok) "moving" else "nothing to move (off, no areas or the wallpaper scrolls)"}")
++                    updateRunning()
++                }
++            }
++        }
++        try {
++            context.registerReceiver(poke, android.content.IntentFilter(ACTION_POKE), android.Manifest.permission.DUMP,
++                handler, Context.RECEIVER_EXPORTED)
++            unobserve += { try { context.unregisterReceiver(poke) } catch (e: IllegalArgumentException) {} }
++        } catch (e: RuntimeException) {
++            Log.w(TAG, "jelly poke receiver", e)
+         }
+         // the lock screen's fingers: whether one is on the character / under the lobby is asked right away (main thread)
+         unobserve += BlueOSJelly.LockTouch.add { a, x, y ->
+@@ -860,6 +925,7 @@ class BlueOSWallpaperWeather(
+ 
+     companion object {
+         private const val TAG = "BlueOSWallWeather"
++        private const val ACTION_POKE = "org.blueos.debug.JELLY_POKE"
+         private const val NONE = 0
+         private const val RAIN = 1
+         private const val SNOW = 2
+diff --git a/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java b/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
+index 35079078d5b2..216c9e7b38bc 100644
+--- a/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
++++ b/packages/SystemUI/src/com/android/systemui/wallpapers/ImageWallpaper.java
+@@ -292,16 +292,34 @@ public class ImageWallpaper extends WallpaperService {
+             // makes the home / lock looks on the GPU right here, before the engine draws its frame; 0.9: which picture
+             // it is, for «Желе на обоях» (the areas belong to one picture)
+             String jellyKey = null;
++            // the id of one kind only (a picture on both screens is the home one)
++            int src = getSourceFlag();
++            int one = (src & WallpaperManager.FLAG_LOCK) != 0 && (src & WallpaperManager.FLAG_SYSTEM) == 0
++                    ? WallpaperManager.FLAG_LOCK : WallpaperManager.FLAG_SYSTEM;
+             try {
+-                // the id of one kind only (a picture on both screens is the home one)
+-                int src = getSourceFlag();
+-                int one = (src & WallpaperManager.FLAG_LOCK) != 0 && (src & WallpaperManager.FLAG_SYSTEM) == 0
+-                        ? WallpaperManager.FLAG_LOCK : WallpaperManager.FLAG_SYSTEM;
+                 jellyKey = org.blueos.arona.BlueOSJelly.INSTANCE.picKey(one,
+                         mWallpaperManager.getWallpaperIdForUser(one, mUserTracker.getUserId()));
+             } catch (RuntimeException e) {
+                 Log.w(TAG, "wallpaper id", e);
+             }
++            // 0.9: which part of the picture the screen shows (the jelly maps fingers onto the picture with it); the
++            // crop is relative to the stored picture — the one this engine loads
++            Rect crop = null;
++            try {
++                Rect screen = getDisplayContext().getSystemService(android.view.WindowManager.class)
++                        .getMaximumWindowMetrics().getBounds();
++                java.util.List<Rect> crops = mWallpaperManager.getBitmapCrops(java.util.List.of(
++                        new android.graphics.Point(screen.width(), screen.height())), one, false);
++                if (!crops.isEmpty()) crop = crops.get(0);
++                if (crop != null && (crop.right > bitmap.getWidth() + 2 || crop.bottom > bitmap.getHeight() + 2)) {
++                    Log.w(TAG, "wallpaper crop " + crop + " is outside the picture " + bitmap.getWidth() + "x"
++                            + bitmap.getHeight());
++                    crop = null;
++                }
++            } catch (RuntimeException e) {
++                Log.w(TAG, "wallpaper crop", e);
++            }
++            mBlueOSWeather.setScreenCrop(crop);
+             mBlueOSWeather.setBitmap(bitmap, frame.width(), frame.height(), jellyKey);
+         }
+ 
+@@ -620,7 +638,10 @@ public class ImageWallpaper extends WallpaperService {
+                 float xOffsetStep, float yOffsetStep,
+                 int xPixelOffset, int yPixelOffset) {
+             // BlueOS 0.8: the home screen pages are being swiped — the weather holds still meanwhile
+-            if (mBlueOSWeather != null) mBlueOSWeather.busy();
++            if (mBlueOSWeather != null) {
++                mBlueOSWeather.busy();
++                mBlueOSWeather.setOffset(xOffset);
++            }
+             final int pages;
+             if (xOffsetStep > 0 && xOffsetStep <= 1) {
+                 pages = Math.round(1 / xOffsetStep) + 1;

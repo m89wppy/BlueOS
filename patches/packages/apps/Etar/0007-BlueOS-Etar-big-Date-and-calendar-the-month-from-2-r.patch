@@ -1,0 +1,3696 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BlueOS <blueos@localhost>
+Date: Thu, 12 Nov 2026 14:51:39 +0700
+Subject: [PATCH 7/9] =?UTF-8?q?BlueOS:=20Etar:=20big=20=C2=ABDate=20and=20?=
+ =?UTF-8?q?calendar=C2=BB=20=E2=80=94=20the=20month=20from=202=20rows,=20d?=
+ =?UTF-8?q?ate=20and=20events=20beside=20it=20when=20wide?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ibe3ce271c713e9c23035ea328354c9b6a9ccff34
+---
+ .../widget/BlueOSDateWidgetProvider.java      |  238 ++-
+ .../main/res/color/blueos_widget_faint.xml    |    5 +
+ app/src/main/res/drawable/blueos_cal_dot.xml  |    5 +
+ app/src/main/res/drawable/blueos_cal_next.xml |    7 +
+ app/src/main/res/drawable/blueos_cal_prev.xml |    7 +
+ .../main/res/drawable/blueos_cal_today.xml    |    5 +
+ app/src/main/res/layout/blueos_cal_events.xml |  214 +++
+ app/src/main/res/layout/blueos_cal_grid.xml   | 1314 +++++++++++++++++
+ .../main/res/layout/blueos_cal_grid_small.xml | 1314 +++++++++++++++++
+ .../res/layout/blueos_month_wide_widget.xml   |  117 ++
+ .../layout/blueos_month_wide_widget_small.xml |  117 ++
+ .../main/res/layout/blueos_month_widget.xml   |   46 +
+ .../res/layout/blueos_month_widget_small.xml  |   46 +
+ .../res/values-night/blueos_widget_colors.xml |    1 +
+ app/src/main/res/values-ru/blueos_strings.xml |    4 +-
+ app/src/main/res/values/blueos_strings.xml    |    4 +-
+ .../main/res/values/blueos_widget_colors.xml  |    1 +
+ 17 files changed, 3426 insertions(+), 19 deletions(-)
+ create mode 100644 app/src/main/res/color/blueos_widget_faint.xml
+ create mode 100644 app/src/main/res/drawable/blueos_cal_dot.xml
+ create mode 100644 app/src/main/res/drawable/blueos_cal_next.xml
+ create mode 100644 app/src/main/res/drawable/blueos_cal_prev.xml
+ create mode 100644 app/src/main/res/drawable/blueos_cal_today.xml
+ create mode 100644 app/src/main/res/layout/blueos_cal_events.xml
+ create mode 100644 app/src/main/res/layout/blueos_cal_grid.xml
+ create mode 100644 app/src/main/res/layout/blueos_cal_grid_small.xml
+ create mode 100644 app/src/main/res/layout/blueos_month_wide_widget.xml
+ create mode 100644 app/src/main/res/layout/blueos_month_wide_widget_small.xml
+ create mode 100644 app/src/main/res/layout/blueos_month_widget.xml
+ create mode 100644 app/src/main/res/layout/blueos_month_widget_small.xml
+
+diff --git a/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java b/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java
+index a9f5ebb0..d488916b 100644
+--- a/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java
++++ b/app/src/main/java/com/android/calendar/widget/BlueOSDateWidgetProvider.java
+@@ -37,19 +37,25 @@ import android.view.View;
+ import android.widget.RemoteViews;
+ 
+ import com.android.calendar.AllInOneActivity;
++import com.android.calendar.Utils;
+ 
++import java.text.SimpleDateFormat;
+ import java.util.ArrayList;
+ import java.util.Calendar;
+ import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
++import java.util.TimeZone;
+ 
+ import ws.xsoh.etar.R;
+ 
+ /**
+- * BlueOS "Date and calendar" widget: today's date in the accent color and the next two events.
++ * BlueOS "Date and calendar" widget: today's date in the accent color and the next events.
+  * Colors are system palette resources, so they follow the accent color and the dark theme.
++ * 0.9: stretched to 2+ rows it shows the month (mockups/blueos-0.9-calendar.html): today in an accent circle,
++ * a dot under days with events, ‹ › to page months (back to this month at midnight or by tapping its name),
++ * a day opens Calendar at that day. Layouts by size: see onUpdate.
+  */
+ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+ 
+@@ -57,8 +63,16 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+     /** Sent by SystemUI when the widget transparency changes. */
+     private static final String ACTION_WIDGET_STYLE_CHANGED =
+             "org.blueos.intent.action.WIDGET_STYLE_CHANGED";
+-    private static final int MAX_EVENTS = 2;
+-    private static final long LOOK_AHEAD_MILLIS = 7 * DateUtils.DAY_IN_MILLIS;
++    private static final String ACTION_PREV = "org.blueos.calendar.action.MONTH_PREV";
++    private static final String ACTION_NEXT = "org.blueos.calendar.action.MONTH_NEXT";
++    private static final String ACTION_NOW = "org.blueos.calendar.action.MONTH_NOW";
++    private static final String PREFS = "blueos_date_widget";
++    private static final String PREF_OFFSET = "month_offset";
++    /** the day the month was paged on: another day = back to this month */
++    private static final String PREF_OFFSET_DAY = "month_offset_day";
++    private static final int MAX_EVENTS = 5;
++    private static final long LOOK_AHEAD_MILLIS = 30 * DateUtils.DAY_IN_MILLIS;
++    private static final int CELLS = 42;
+ 
+     private static final String[] PROJECTION = {
+             Instances.TITLE,
+@@ -76,7 +90,28 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+     private static final int[][] EVENT_VIEWS = {
+             {R.id.blueos_event1, R.id.blueos_event1_title, R.id.blueos_event1_time},
+             {R.id.blueos_event2, R.id.blueos_event2_title, R.id.blueos_event2_time},
++            {R.id.blueos_event3, R.id.blueos_event3_title, R.id.blueos_event3_time},
++            {R.id.blueos_event4, R.id.blueos_event4_title, R.id.blueos_event4_time},
++            {R.id.blueos_event5, R.id.blueos_event5_title, R.id.blueos_event5_time},
+     };
++    private static final int[] WEEK_ROWS = {R.id.blueos_cal_w0, R.id.blueos_cal_w1, R.id.blueos_cal_w2,
++            R.id.blueos_cal_w3, R.id.blueos_cal_w4, R.id.blueos_cal_w5};
++    private static final int[] WEEKDAYS = {R.id.blueos_cal_wd0, R.id.blueos_cal_wd1, R.id.blueos_cal_wd2,
++            R.id.blueos_cal_wd3, R.id.blueos_cal_wd4, R.id.blueos_cal_wd5, R.id.blueos_cal_wd6};
++    /** the 42 day cells: [cell, number, dot], looked up by name once */
++    private static int[][] sCells;
++
++    /** The month shown: 6 weeks of cells from the week's first day, as many rows as the month needs. */
++    private static final class Month {
++        String title;
++        final String[] weekdays = new String[7];
++        int rows;
++        final long[] millis = new long[CELLS];
++        final int[] day = new int[CELLS];
++        final boolean[] mine = new boolean[CELLS];
++        final boolean[] today = new boolean[CELLS];
++        final boolean[] events = new boolean[CELLS];
++    }
+ 
+     private static final class Event {
+         final String title;
+@@ -96,7 +131,16 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+     public void onReceive(Context context, Intent intent) {
+         super.onReceive(context, intent);
+         final String action = intent.getAction();
+-        if (ACTION_REFRESH.equals(action)
++        if (ACTION_PREV.equals(action) || ACTION_NEXT.equals(action) || ACTION_NOW.equals(action)) {
++            final int offset = ACTION_NOW.equals(action) ? 0
++                    : Math.max(-120, Math.min(120, monthOffset(context) + (ACTION_PREV.equals(action) ? -1 : 1)));
++            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
++                    .putInt(PREF_OFFSET, offset)
++                    .putInt(PREF_OFFSET_DAY, julianDay(System.currentTimeMillis()))
++                    .apply();
++        }
++        if (ACTION_PREV.equals(action) || ACTION_NEXT.equals(action) || ACTION_NOW.equals(action)
++                || ACTION_REFRESH.equals(action)
+                 || ACTION_WIDGET_STYLE_CHANGED.equals(action)
+                 || Intent.ACTION_PROVIDER_CHANGED.equals(action)
+                 || Intent.ACTION_DATE_CHANGED.equals(action)
+@@ -114,13 +158,25 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+             return;
+         }
+         final List<Event> events = loadEvents(context);
++        final Month month = loadMonth(context, monthOffset(context));
+         // One row (106.7 dp inside the card) fits the date and one event on one line; two rows
+         // show both events with their times. 0.8.1: a card narrower than the full «no events»
+         // line (142 dp of text + 24 padding + 16 margin) gets the short one: it was cut to «Ближайших»
++        // 0.9: from 2 rows (≥ 250 dp with the 8 dp margin) the month; wide (≥ 300 dp) the date and events
++        // beside it; from 3 rows (≥ 380 dp) more events. A day column under 26 dp (4×5 grid's 2 columns, 5×5's
++        // 4 columns wide) takes the small grid (20 dp circles, 12 sp) instead of shrinking the text.
+         final Map<SizeF, RemoteViews> sized = new LinkedHashMap<>();
+         sized.put(new SizeF(90f, 90f), buildViews(context, events, 1, true));
+         sized.put(new SizeF(185f, 90f), buildViews(context, events, 1, false));
+-        sized.put(new SizeF(90f, 180f), buildViews(context, events, MAX_EVENTS, false));
++        sized.put(new SizeF(90f, 180f), buildViews(context, events, 2, false));
++        sized.put(new SizeF(190f, 250f), buildMonth(context, events, month, R.layout.blueos_month_widget_small, 0, false));
++        sized.put(new SizeF(230f, 250f), buildMonth(context, events, month, R.layout.blueos_month_widget, 0, false));
++        sized.put(new SizeF(190f, 380f), buildMonth(context, events, month, R.layout.blueos_month_widget_small, 3, false));
++        sized.put(new SizeF(230f, 380f), buildMonth(context, events, month, R.layout.blueos_month_widget, 3, false));
++        sized.put(new SizeF(300f, 250f), buildMonth(context, events, month, R.layout.blueos_month_wide_widget_small, 2, true));
++        sized.put(new SizeF(370f, 250f), buildMonth(context, events, month, R.layout.blueos_month_wide_widget, 2, true));
++        sized.put(new SizeF(300f, 380f), buildMonth(context, events, month, R.layout.blueos_month_wide_widget_small, 5, true));
++        sized.put(new SizeF(370f, 380f), buildMonth(context, events, month, R.layout.blueos_month_wide_widget, 5, true));
+         final RemoteViews rv = new RemoteViews(sized);
+         for (int widgetId : widgetIds) {
+             wm.updateAppWidget(widgetId, rv);
+@@ -143,6 +199,155 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+         setClockFormat(rv, R.id.blueos_weekday, DateFormat.getBestDateTimePattern(locale, "EEEE"));
+         setClockFormat(rv, R.id.blueos_month, DateFormat.getBestDateTimePattern(locale, "LLLL"));
+ 
++        setEvents(context, rv, events, maxShown, shortEmpty);
++        setWeather(context, rv);
++        rv.setOnClickPendingIntent(android.R.id.background, openAt(context, System.currentTimeMillis(), 0));
++        return rv;
++    }
++
++    /** 0.9: the big widget — the month, with the date and events beside it (wide) or under it. */
++    private RemoteViews buildMonth(Context context, List<Event> events, Month m, int layout, int maxShown,
++            boolean wide) {
++        final RemoteViews rv = new RemoteViews(context.getPackageName(), layout);
++        rv.setInt(R.id.blueos_widget_bg, "setImageAlpha",
++                BlueOSCountdownWidgetProvider.cardAlpha(context));
++        if (wide) {
++            final Locale locale = Locale.getDefault();
++            setClockFormat(rv, R.id.blueos_day, "d");
++            setClockFormat(rv, R.id.blueos_weekday, DateFormat.getBestDateTimePattern(locale, "EEEE"));
++            setClockFormat(rv, R.id.blueos_month, DateFormat.getBestDateTimePattern(locale, "LLLL"));
++            rv.setTextViewTextSize(R.id.blueos_day, android.util.TypedValue.COMPLEX_UNIT_SP, maxShown > 2 ? 48 : 40);
++            setWeather(context, rv);
++        } else {
++            rv.setViewVisibility(R.id.blueos_cal_divider, maxShown > 0 ? View.VISIBLE : View.GONE);
++        }
++        rv.setViewVisibility(R.id.blueos_cal_events, maxShown > 0 ? View.VISIBLE : View.GONE);
++        if (maxShown > 0) setEvents(context, rv, events, maxShown, false);
++        fillMonth(context, rv, m);
++        rv.setOnClickPendingIntent(android.R.id.background, openAt(context, System.currentTimeMillis(), 0));
++        return rv;
++    }
++
++    private static void fillMonth(Context context, RemoteViews rv, Month m) {
++        final int[][] cells = cells(context);
++        rv.setTextViewText(R.id.blueos_cal_month, m.title);
++        for (int c = 0; c < 7; c++) rv.setTextViewText(WEEKDAYS[c], m.weekdays[c]);
++        for (int r = 0; r < WEEK_ROWS.length; r++) {
++            rv.setViewVisibility(WEEK_ROWS[r], r < m.rows ? View.VISIBLE : View.GONE);
++        }
++        final java.text.NumberFormat digits = java.text.NumberFormat.getIntegerInstance();
++        for (int i = 0; i < m.rows * 7; i++) {
++            final int[] v = cells[i];
++            rv.setTextViewText(v[1], digits.format(m.day[i]));
++            // every property every time: the launcher re-applies onto the views it already has
++            rv.setInt(v[1], "setBackgroundResource", m.today[i] ? R.drawable.blueos_cal_today : 0);
++            rv.setColorStateList(v[1], "setTextColor", m.today[i] ? R.color.blueos_widget_on_primary
++                    : m.mine[i] ? R.color.blueos_widget_on_surface : R.color.blueos_widget_faint);
++            rv.setViewVisibility(v[2], m.events[i] ? View.VISIBLE : View.GONE);
++            rv.setOnClickPendingIntent(v[0], openAt(context, m.millis[i] + 12 * DateUtils.HOUR_IN_MILLIS, 100 + i));
++        }
++        rv.setOnClickPendingIntent(R.id.blueos_cal_prev, page(context, ACTION_PREV, 1));
++        rv.setOnClickPendingIntent(R.id.blueos_cal_next, page(context, ACTION_NEXT, 2));
++        rv.setOnClickPendingIntent(R.id.blueos_cal_month, page(context, ACTION_NOW, 3));
++        rv.setContentDescription(R.id.blueos_cal_prev, context.getString(R.string.blueos_date_widget_prev));
++        rv.setContentDescription(R.id.blueos_cal_next, context.getString(R.string.blueos_date_widget_next));
++    }
++
++    private static int[][] cells(Context context) {
++        if (sCells == null) {
++            final android.content.res.Resources res = context.getResources();
++            final String pkg = context.getPackageName();
++            final int[][] out = new int[CELLS][];
++            for (int i = 0; i < CELLS; i++) {
++                out[i] = new int[] {res.getIdentifier("blueos_cal_c" + i, "id", pkg),
++                        res.getIdentifier("blueos_cal_d" + i, "id", pkg),
++                        res.getIdentifier("blueos_cal_e" + i, "id", pkg)};
++            }
++            sCells = out;
++        }
++        return sCells;
++    }
++
++    /** Opens Calendar at [millis]. */
++    private static PendingIntent openAt(Context context, long millis, int request) {
++        final Intent open = new Intent(Intent.ACTION_VIEW)
++                .setClass(context, AllInOneActivity.class)
++                .setData(Uri.parse("content://com.android.calendar/time/" + millis));
++        return PendingIntent.getActivity(context, request, open,
++                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
++    }
++
++    private static PendingIntent page(Context context, String action, int request) {
++        final Intent intent = new Intent(action).setClass(context, BlueOSDateWidgetProvider.class);
++        return PendingIntent.getBroadcast(context, request, intent, PendingIntent.FLAG_IMMUTABLE);
++    }
++
++    /** Months away from this one the user paged to; 0 again on another day. */
++    private static int monthOffset(Context context) {
++        final android.content.SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
++        return p.getInt(PREF_OFFSET_DAY, 0) == julianDay(System.currentTimeMillis()) ? p.getInt(PREF_OFFSET, 0) : 0;
++    }
++
++    private static Month loadMonth(Context context, int offset) {
++        final Month m = new Month();
++        final Locale locale = Locale.getDefault();
++        final Calendar first = Calendar.getInstance();
++        final int thisYear = first.get(Calendar.YEAR);
++        first.set(Calendar.DAY_OF_MONTH, 1);
++        first.set(Calendar.HOUR_OF_DAY, 0);
++        first.set(Calendar.MINUTE, 0);
++        first.set(Calendar.SECOND, 0);
++        first.set(Calendar.MILLISECOND, 0);
++        first.add(Calendar.MONTH, offset);
++        final int month = first.get(Calendar.MONTH);
++        // «Ноябрь», another year «Ноябрь 2027» (standalone month names, first letter up)
++        final String pattern = DateFormat.getBestDateTimePattern(locale,
++                first.get(Calendar.YEAR) == thisYear ? "LLLL" : "LLLLyyyy");
++        final String title = new SimpleDateFormat(pattern, locale).format(first.getTime());
++        m.title = title.isEmpty() ? title : title.substring(0, 1).toUpperCase(locale) + title.substring(1);
++
++        final int weekStart = Utils.getFirstDayOfWeekAsCalendar(context);   // Calendar.MONDAY …
++        final String[] names = android.icu.text.DateFormatSymbols.getInstance(locale).getWeekdays(
++                android.icu.text.DateFormatSymbols.FORMAT, android.icu.text.DateFormatSymbols.SHORT);
++        for (int c = 0; c < 7; c++) m.weekdays[c] = names[(weekStart - 1 + c) % 7 + 1];
++
++        final int lead = (first.get(Calendar.DAY_OF_WEEK) - weekStart + 7) % 7;
++        m.rows = (lead + first.getActualMaximum(Calendar.DAY_OF_MONTH) + 6) / 7;
++        final int today = julianDay(System.currentTimeMillis());
++        final Calendar d = (Calendar) first.clone();
++        d.add(Calendar.DAY_OF_MONTH, -lead);
++        final int[] julian = new int[CELLS];
++        for (int i = 0; i < CELLS; i++) {
++            m.millis[i] = d.getTimeInMillis();
++            m.day[i] = d.get(Calendar.DAY_OF_MONTH);
++            m.mine[i] = d.get(Calendar.MONTH) == month;
++            julian[i] = julianDayAt(m.millis[i] + 12 * DateUtils.HOUR_IN_MILLIS);
++            m.today[i] = julian[i] == today;
++            d.add(Calendar.DAY_OF_MONTH, 1);
++        }
++        if (!canReadCalendar(context)) return m;
++        // days with events: START_DAY..END_DAY (inclusive, all-day ones in UTC days as the provider keeps them)
++        final Uri.Builder uri = Instances.CONTENT_URI.buildUpon();
++        ContentUris.appendId(uri, m.millis[0] - DateUtils.DAY_IN_MILLIS);
++        ContentUris.appendId(uri, m.millis[CELLS - 1] + 2 * DateUtils.DAY_IN_MILLIS);
++        try (Cursor c = context.getContentResolver().query(uri.build(),
++                new String[] {Instances.START_DAY, Instances.END_DAY}, Instances.VISIBLE + "=1", null, null)) {
++            while (c != null && c.moveToNext()) {
++                final int from = Math.max(c.getInt(0), julian[0]);
++                final int to = Math.min(c.getInt(1), julian[CELLS - 1]);
++                for (int j = from; j <= to; j++) {
++                    final int i = j - julian[0];
++                    if (i >= 0 && i < CELLS && m.mine[i]) m.events[i] = true;
++                }
++            }
++        } catch (RuntimeException e) {
++            // A misbehaving provider must not break the widget: no dots
++        }
++        return m;
++    }
++
++    private static void setEvents(Context context, RemoteViews rv, List<Event> events, int maxShown,
++            boolean shortEmpty) {
+         final boolean canRead = canReadCalendar(context);
+         for (int i = 0; i < EVENT_VIEWS.length; i++) {
+             final int[] views = EVENT_VIEWS[i];
+@@ -167,16 +372,6 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+         rv.setTextViewText(R.id.blueos_no_events, context.getString(canRead
+                 ? (shortEmpty ? R.string.blueos_date_widget_no_events_short : R.string.blueos_date_widget_no_events)
+                 : (shortEmpty ? R.string.blueos_date_widget_no_access_short : R.string.blueos_date_widget_no_access)));
+-        setWeather(context, rv);
+-
+-        // Tapping opens the calendar at today
+-        final Intent open = new Intent(Intent.ACTION_VIEW)
+-                .setClass(context, AllInOneActivity.class)
+-                .setData(Uri.parse("content://com.android.calendar/time/"
+-                        + System.currentTimeMillis()));
+-        rv.setOnClickPendingIntent(android.R.id.background,
+-                PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE));
+-        return rv;
+     }
+ 
+     /**
+@@ -268,7 +463,9 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+                 return context.getString(R.string.today);
+             }
+             return DateUtils.formatDateTime(context, event.begin, DateUtils.FORMAT_SHOW_WEEKDAY
+-                    | DateUtils.FORMAT_ABBREV_WEEKDAY | DateUtils.FORMAT_UTC);
++                    | DateUtils.FORMAT_ABBREV_WEEKDAY | DateUtils.FORMAT_UTC
++                    | (event.begin - now > 6 * DateUtils.DAY_IN_MILLIS ? DateUtils.FORMAT_SHOW_DATE
++                            | DateUtils.FORMAT_NO_YEAR | DateUtils.FORMAT_ABBREV_MONTH : 0));
+         }
+         if (event.begin <= now || DateUtils.isToday(event.begin)) {
+             return DateUtils.formatDateRange(context, event.begin, event.end,
+@@ -280,7 +477,14 @@ public class BlueOSDateWidgetProvider extends AppWidgetProvider {
+             return context.getString(R.string.blueos_date_widget_tomorrow, time);
+         }
+         return DateUtils.formatDateTime(context, event.begin, DateUtils.FORMAT_SHOW_WEEKDAY
+-                | DateUtils.FORMAT_ABBREV_WEEKDAY | DateUtils.FORMAT_SHOW_TIME);
++                | DateUtils.FORMAT_ABBREV_WEEKDAY | DateUtils.FORMAT_SHOW_TIME
++                | (event.begin - now > 6 * DateUtils.DAY_IN_MILLIS ? DateUtils.FORMAT_SHOW_DATE
++                        | DateUtils.FORMAT_NO_YEAR | DateUtils.FORMAT_ABBREV_MONTH : 0));
++    }
++
++    /** The Julian day of [millis] in this time zone at that moment (another month may have other DST). */
++    private static int julianDayAt(long millis) {
++        return (int) ((millis + TimeZone.getDefault().getOffset(millis)) / DateUtils.DAY_IN_MILLIS) + 2440588;
+     }
+ 
+     private static int julianDayUtc(long millis) {
+diff --git a/app/src/main/res/color/blueos_widget_faint.xml b/app/src/main/res/color/blueos_widget_faint.xml
+new file mode 100644
+index 00000000..629e1ea7
+--- /dev/null
++++ b/app/src/main/res/color/blueos_widget_faint.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 big calendar: the other month's days — the second text role, fainter -->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:alpha="0.45" android:color="@color/blueos_widget_on_surface_variant" />
++</selector>
+diff --git a/app/src/main/res/drawable/blueos_cal_dot.xml b/app/src/main/res/drawable/blueos_cal_dot.xml
+new file mode 100644
+index 00000000..3ef8a96f
+--- /dev/null
++++ b/app/src/main/res/drawable/blueos_cal_dot.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 big calendar: the dot under a day with events — the accent role, resolved in the launcher (follows theme + palette) -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
++    <solid android:color="@color/blueos_widget_primary" />
++</shape>
+diff --git a/app/src/main/res/drawable/blueos_cal_next.xml b/app/src/main/res/drawable/blueos_cal_next.xml
+new file mode 100644
+index 00000000..8fc13395
+--- /dev/null
++++ b/app/src/main/res/drawable/blueos_cal_next.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 big calendar: next month (Material chevron), tinted in the layout -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="20dp" android:height="20dp" android:viewportWidth="24" android:viewportHeight="24"
++    android:autoMirrored="true">
++    <path android:fillColor="@android:color/white" android:pathData="M8.59,16.59L13.17,12 8.59,7.41 10,6l6,6 -6,6 -1.41,-1.41z" />
++</vector>
+diff --git a/app/src/main/res/drawable/blueos_cal_prev.xml b/app/src/main/res/drawable/blueos_cal_prev.xml
+new file mode 100644
+index 00000000..183299f3
+--- /dev/null
++++ b/app/src/main/res/drawable/blueos_cal_prev.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 big calendar: previous month (Material chevron), tinted in the layout -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="20dp" android:height="20dp" android:viewportWidth="24" android:viewportHeight="24"
++    android:autoMirrored="true">
++    <path android:fillColor="@android:color/white" android:pathData="M15.41,16.59L10.83,12l4.58,-4.59L14,6l-6,6 6,6 1.41,-1.41z" />
++</vector>
+diff --git a/app/src/main/res/drawable/blueos_cal_today.xml b/app/src/main/res/drawable/blueos_cal_today.xml
+new file mode 100644
+index 00000000..d44454ae
+--- /dev/null
++++ b/app/src/main/res/drawable/blueos_cal_today.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 big calendar: today's circle — the accent role, resolved in the launcher (follows theme + palette) -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
++    <solid android:color="@color/blueos_widget_primary" />
++</shape>
+diff --git a/app/src/main/res/layout/blueos_cal_events.xml b/app/src/main/res/layout/blueos_cal_events.xml
+new file mode 100644
+index 00000000..77cd695d
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_cal_events.xml
+@@ -0,0 +1,214 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9: up to five next events of the big «Date and calendar» widget (generated by cal_layouts.py) -->
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@+id/blueos_cal_events"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:orientation="vertical">
++    <LinearLayout
++        android:id="@+id/blueos_event1"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="8dp"
++        android:orientation="horizontal"
++        android:visibility="gone">
++        <ImageView
++            android:layout_width="3dp"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_event_bar"
++            android:tint="@color/blueos_widget_primary" />
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="8dp"
++            android:orientation="vertical">
++            <TextView
++                android:id="@+id/blueos_event1_title"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface"
++                android:textSize="13sp" />
++            <TextView
++                android:id="@+id/blueos_event1_time"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface_variant"
++                android:textSize="12sp" />
++        </LinearLayout>
++    </LinearLayout>
++    <LinearLayout
++        android:id="@+id/blueos_event2"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="6dp"
++        android:orientation="horizontal"
++        android:visibility="gone">
++        <ImageView
++            android:layout_width="3dp"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_event_bar"
++            android:tint="@color/blueos_widget_primary_container" />
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="8dp"
++            android:orientation="vertical">
++            <TextView
++                android:id="@+id/blueos_event2_title"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface"
++                android:textSize="13sp" />
++            <TextView
++                android:id="@+id/blueos_event2_time"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface_variant"
++                android:textSize="12sp" />
++        </LinearLayout>
++    </LinearLayout>
++    <LinearLayout
++        android:id="@+id/blueos_event3"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="6dp"
++        android:orientation="horizontal"
++        android:visibility="gone">
++        <ImageView
++            android:layout_width="3dp"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_event_bar"
++            android:tint="@color/blueos_widget_primary_container" />
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="8dp"
++            android:orientation="vertical">
++            <TextView
++                android:id="@+id/blueos_event3_title"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface"
++                android:textSize="13sp" />
++            <TextView
++                android:id="@+id/blueos_event3_time"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface_variant"
++                android:textSize="12sp" />
++        </LinearLayout>
++    </LinearLayout>
++    <LinearLayout
++        android:id="@+id/blueos_event4"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="6dp"
++        android:orientation="horizontal"
++        android:visibility="gone">
++        <ImageView
++            android:layout_width="3dp"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_event_bar"
++            android:tint="@color/blueos_widget_primary_container" />
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="8dp"
++            android:orientation="vertical">
++            <TextView
++                android:id="@+id/blueos_event4_title"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface"
++                android:textSize="13sp" />
++            <TextView
++                android:id="@+id/blueos_event4_time"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface_variant"
++                android:textSize="12sp" />
++        </LinearLayout>
++    </LinearLayout>
++    <LinearLayout
++        android:id="@+id/blueos_event5"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="6dp"
++        android:orientation="horizontal"
++        android:visibility="gone">
++        <ImageView
++            android:layout_width="3dp"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_event_bar"
++            android:tint="@color/blueos_widget_primary_container" />
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="8dp"
++            android:orientation="vertical">
++            <TextView
++                android:id="@+id/blueos_event5_title"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface"
++                android:textSize="13sp" />
++            <TextView
++                android:id="@+id/blueos_event5_time"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:ellipsize="end"
++                android:fontFamily="google-sans-text"
++                android:singleLine="true"
++                android:textColor="@color/blueos_widget_on_surface_variant"
++                android:textSize="12sp" />
++        </LinearLayout>
++    </LinearLayout>
++    <TextView
++        android:id="@+id/blueos_no_events"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="8dp"
++        android:ellipsize="end"
++        android:fontFamily="google-sans-text"
++        android:maxLines="2"
++        android:text="@string/blueos_date_widget_no_events"
++        android:textColor="@color/blueos_widget_on_surface_variant"
++        android:textSize="12sp" />
++</LinearLayout>
+diff --git a/app/src/main/res/layout/blueos_cal_grid.xml b/app/src/main/res/layout/blueos_cal_grid.xml
+new file mode 100644
+index 00000000..a8ca9630
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_cal_grid.xml
+@@ -0,0 +1,1314 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9: the month of the big «Date and calendar» widget (generated by scripts-claude/cal_layouts.py:
++     circle 24 dp, 13 sp). A dot under a day with events may reach into the next row: clipChildren off. -->
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@+id/blueos_cal_grid"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:clipChildren="false"
++    android:orientation="vertical">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="24dp"
++        android:gravity="center_vertical"
++        android:orientation="horizontal">
++        <TextView
++            android:id="@+id/blueos_cal_month"
++            android:layout_width="0dp"
++            android:layout_height="match_parent"
++            android:layout_weight="1"
++            android:ellipsize="end"
++            android:fontFamily="google-sans-text"
++            android:gravity="center_vertical"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface"
++            android:textSize="14sp"
++            android:textStyle="bold" />
++        <ImageView
++            android:id="@+id/blueos_cal_prev"
++            android:layout_width="28dp"
++            android:layout_height="24dp"
++            android:contentDescription="@null"
++            android:paddingHorizontal="4dp"
++            android:paddingVertical="2dp"
++            android:src="@drawable/blueos_cal_prev"
++            android:tint="@color/blueos_widget_on_surface_variant" />
++        <ImageView
++            android:id="@+id/blueos_cal_next"
++            android:layout_width="28dp"
++            android:layout_height="24dp"
++            android:contentDescription="@null"
++            android:paddingHorizontal="4dp"
++            android:paddingVertical="2dp"
++            android:src="@drawable/blueos_cal_next"
++            android:tint="@color/blueos_widget_on_surface_variant" />
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="18dp"
++        android:gravity="center_vertical"
++        android:orientation="horizontal">
++        <TextView
++            android:id="@+id/blueos_cal_wd0"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd1"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd2"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd3"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd4"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd5"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd6"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1"
++        android:clipChildren="false"
++        android:orientation="vertical">
++        <LinearLayout
++            android:id="@+id/blueos_cal_w0"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c0"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d0"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e0"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c1"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d1"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e1"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c2"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d2"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e2"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c3"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d3"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e3"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c4"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d4"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e4"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c5"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d5"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e5"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c6"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d6"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e6"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w1"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c7"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d7"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e7"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c8"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d8"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e8"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c9"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d9"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e9"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c10"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d10"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e10"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c11"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d11"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e11"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c12"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d12"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e12"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c13"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d13"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e13"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w2"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c14"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d14"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e14"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c15"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d15"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e15"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c16"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d16"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e16"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c17"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d17"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e17"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c18"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d18"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e18"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c19"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d19"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e19"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c20"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d20"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e20"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w3"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c21"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d21"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e21"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c22"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d22"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e22"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c23"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d23"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e23"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c24"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d24"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e24"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c25"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d25"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e25"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c26"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d26"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e26"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c27"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d27"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e27"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w4"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c28"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d28"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e28"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c29"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d29"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e29"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c30"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d30"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e30"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c31"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d31"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e31"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c32"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d32"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e32"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c33"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d33"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e33"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c34"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d34"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e34"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w5"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c35"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d35"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e35"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c36"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d36"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e36"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c37"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d37"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e37"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c38"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d38"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e38"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c39"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d39"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e39"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c40"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d40"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e40"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c41"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d41"
++                    android:layout_width="24dp"
++                    android:layout_height="24dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="13sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e41"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="15dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++    </LinearLayout>
++</LinearLayout>
+diff --git a/app/src/main/res/layout/blueos_cal_grid_small.xml b/app/src/main/res/layout/blueos_cal_grid_small.xml
+new file mode 100644
+index 00000000..b41198ee
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_cal_grid_small.xml
+@@ -0,0 +1,1314 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9: the month of the big «Date and calendar» widget (generated by scripts-claude/cal_layouts.py:
++     circle 20 dp, 12 sp). A dot under a day with events may reach into the next row: clipChildren off. -->
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@+id/blueos_cal_grid"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:clipChildren="false"
++    android:orientation="vertical">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="24dp"
++        android:gravity="center_vertical"
++        android:orientation="horizontal">
++        <TextView
++            android:id="@+id/blueos_cal_month"
++            android:layout_width="0dp"
++            android:layout_height="match_parent"
++            android:layout_weight="1"
++            android:ellipsize="end"
++            android:fontFamily="google-sans-text"
++            android:gravity="center_vertical"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface"
++            android:textSize="14sp"
++            android:textStyle="bold" />
++        <ImageView
++            android:id="@+id/blueos_cal_prev"
++            android:layout_width="28dp"
++            android:layout_height="24dp"
++            android:contentDescription="@null"
++            android:paddingHorizontal="4dp"
++            android:paddingVertical="2dp"
++            android:src="@drawable/blueos_cal_prev"
++            android:tint="@color/blueos_widget_on_surface_variant" />
++        <ImageView
++            android:id="@+id/blueos_cal_next"
++            android:layout_width="28dp"
++            android:layout_height="24dp"
++            android:contentDescription="@null"
++            android:paddingHorizontal="4dp"
++            android:paddingVertical="2dp"
++            android:src="@drawable/blueos_cal_next"
++            android:tint="@color/blueos_widget_on_surface_variant" />
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="18dp"
++        android:gravity="center_vertical"
++        android:orientation="horizontal">
++        <TextView
++            android:id="@+id/blueos_cal_wd0"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd1"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd2"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd3"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd4"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd5"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++        <TextView
++            android:id="@+id/blueos_cal_wd6"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:fontFamily="google-sans-text"
++            android:gravity="center"
++            android:singleLine="true"
++            android:textColor="@color/blueos_widget_on_surface_variant"
++            android:textSize="11sp" />
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1"
++        android:clipChildren="false"
++        android:orientation="vertical">
++        <LinearLayout
++            android:id="@+id/blueos_cal_w0"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c0"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d0"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e0"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c1"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d1"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e1"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c2"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d2"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e2"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c3"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d3"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e3"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c4"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d4"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e4"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c5"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d5"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e5"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c6"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d6"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e6"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w1"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c7"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d7"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e7"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c8"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d8"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e8"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c9"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d9"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e9"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c10"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d10"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e10"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c11"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d11"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e11"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c12"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d12"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e12"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c13"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d13"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e13"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w2"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c14"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d14"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e14"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c15"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d15"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e15"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c16"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d16"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e16"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c17"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d17"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e17"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c18"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d18"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e18"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c19"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d19"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e19"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c20"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d20"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e20"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w3"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c21"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d21"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e21"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c22"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d22"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e22"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c23"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d23"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e23"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c24"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d24"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e24"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c25"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d25"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e25"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c26"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d26"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e26"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c27"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d27"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e27"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w4"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c28"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d28"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e28"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c29"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d29"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e29"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c30"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d30"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e30"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c31"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d31"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e31"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c32"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d32"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e32"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c33"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d33"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e33"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c34"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d34"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e34"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++        <LinearLayout
++            android:id="@+id/blueos_cal_w5"
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:clipChildren="false"
++            android:orientation="horizontal">
++            <FrameLayout
++                android:id="@+id/blueos_cal_c35"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d35"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e35"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c36"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d36"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e36"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c37"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d37"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e37"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c38"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d38"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e38"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c39"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d39"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e39"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c40"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d40"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e40"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++            <FrameLayout
++                android:id="@+id/blueos_cal_c41"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:clipChildren="false">
++                <TextView
++                    android:id="@+id/blueos_cal_d41"
++                    android:layout_width="20dp"
++                    android:layout_height="20dp"
++                    android:layout_gravity="center"
++                    android:fontFamily="google-sans-text"
++                    android:gravity="center"
++                    android:includeFontPadding="false"
++                    android:singleLine="true"
++                    android:textColor="@color/blueos_widget_on_surface"
++                    android:textSize="12sp" />
++                <ImageView
++                    android:id="@+id/blueos_cal_e41"
++                    android:layout_width="4dp"
++                    android:layout_height="4dp"
++                    android:layout_gravity="center"
++                    android:layout_marginTop="13dp"
++                    android:contentDescription="@null"
++                    android:src="@drawable/blueos_cal_dot"
++                    android:visibility="gone" />
++            </FrameLayout>
++        </LinearLayout>
++    </LinearLayout>
++</LinearLayout>
+diff --git a/app/src/main/res/layout/blueos_month_wide_widget.xml b/app/src/main/res/layout/blueos_month_wide_widget.xml
+new file mode 100644
+index 00000000..d7d76aa2
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_month_wide_widget.xml
+@@ -0,0 +1,117 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 «Date and calendar», wide and 2+ rows: today's date, weather and the next events | the month
++     (generated by scripts-claude/cal_layouts.py) -->
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:padding="8dp">
++
++    <!-- The card keeps 8 dp inside the widget's cells, like every BlueOS widget -->
++    <FrameLayout
++        android:id="@android:id/background"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:background="@drawable/blueos_widget_outline"
++        android:clipToOutline="true">
++
++        <ImageView
++            android:id="@+id/blueos_widget_bg"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_card" />
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:clipChildren="false"
++            android:orientation="horizontal"
++            android:padding="12dp">
++
++            <LinearLayout
++                android:id="@+id/blueos_cal_today"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="38"
++                android:orientation="vertical">
++                <LinearLayout
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:gravity="center_vertical"
++                    android:orientation="horizontal">
++                    <TextClock
++                        android:id="@+id/blueos_day"
++                        android:layout_width="wrap_content"
++                        android:layout_height="wrap_content"
++                        android:fontFamily="blueos-clock"
++                        android:fontVariationSettings="'wght' 600"
++                        android:includeFontPadding="false"
++                        android:singleLine="true"
++                        android:textColor="@color/blueos_widget_primary"
++                        android:textSize="40sp" />
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content"
++                        android:layout_marginStart="10dp"
++                        android:orientation="vertical">
++                        <TextClock
++                            android:id="@+id/blueos_weekday"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:ellipsize="end"
++                            android:fontFamily="google-sans-text"
++                            android:singleLine="true"
++                            android:textColor="@color/blueos_widget_on_surface"
++                            android:textSize="13sp" />
++                        <TextClock
++                            android:id="@+id/blueos_month"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:ellipsize="end"
++                            android:fontFamily="google-sans-text"
++                            android:singleLine="true"
++                            android:textColor="@color/blueos_widget_on_surface_variant"
++                            android:textSize="13sp" />
++                    </LinearLayout>
++                </LinearLayout>
++                <!-- weather (Обои и стиль → Погода → «В виджете Дата») -->
++                <LinearLayout
++                    android:id="@+id/blueos_weather_box"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="6dp"
++                    android:gravity="center_vertical"
++                    android:orientation="horizontal"
++                    android:visibility="gone">
++                    <ImageView
++                        android:id="@+id/blueos_weather_icon"
++                        android:layout_width="16dp"
++                        android:layout_height="16dp"
++                        android:layout_marginEnd="3dp"
++                        android:contentDescription="@null"
++                        android:tint="@color/blueos_widget_on_surface" />
++                    <TextView
++                        android:id="@+id/blueos_weather"
++                        android:layout_width="wrap_content"
++                        android:layout_height="wrap_content"
++                        android:fontFamily="google-sans-text"
++                        android:singleLine="true"
++                        android:textColor="@color/blueos_widget_on_surface"
++                        android:textSize="13sp" />
++                </LinearLayout>
++                <include layout="@layout/blueos_cal_events" />
++            </LinearLayout>
++
++            <Space
++                android:layout_width="14dp"
++                android:layout_height="match_parent" />
++
++            <include
++                layout="@layout/blueos_cal_grid"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="62" />
++        </LinearLayout>
++    </FrameLayout>
++</FrameLayout>
+diff --git a/app/src/main/res/layout/blueos_month_wide_widget_small.xml b/app/src/main/res/layout/blueos_month_wide_widget_small.xml
+new file mode 100644
+index 00000000..5c3220c3
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_month_wide_widget_small.xml
+@@ -0,0 +1,117 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 «Date and calendar», wide and 2+ rows: today's date, weather and the next events | the month
++     (generated by scripts-claude/cal_layouts.py) -->
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:padding="8dp">
++
++    <!-- The card keeps 8 dp inside the widget's cells, like every BlueOS widget -->
++    <FrameLayout
++        android:id="@android:id/background"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:background="@drawable/blueos_widget_outline"
++        android:clipToOutline="true">
++
++        <ImageView
++            android:id="@+id/blueos_widget_bg"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_card" />
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:clipChildren="false"
++            android:orientation="horizontal"
++            android:padding="12dp">
++
++            <LinearLayout
++                android:id="@+id/blueos_cal_today"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="38"
++                android:orientation="vertical">
++                <LinearLayout
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:gravity="center_vertical"
++                    android:orientation="horizontal">
++                    <TextClock
++                        android:id="@+id/blueos_day"
++                        android:layout_width="wrap_content"
++                        android:layout_height="wrap_content"
++                        android:fontFamily="blueos-clock"
++                        android:fontVariationSettings="'wght' 600"
++                        android:includeFontPadding="false"
++                        android:singleLine="true"
++                        android:textColor="@color/blueos_widget_primary"
++                        android:textSize="40sp" />
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content"
++                        android:layout_marginStart="10dp"
++                        android:orientation="vertical">
++                        <TextClock
++                            android:id="@+id/blueos_weekday"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:ellipsize="end"
++                            android:fontFamily="google-sans-text"
++                            android:singleLine="true"
++                            android:textColor="@color/blueos_widget_on_surface"
++                            android:textSize="13sp" />
++                        <TextClock
++                            android:id="@+id/blueos_month"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:ellipsize="end"
++                            android:fontFamily="google-sans-text"
++                            android:singleLine="true"
++                            android:textColor="@color/blueos_widget_on_surface_variant"
++                            android:textSize="13sp" />
++                    </LinearLayout>
++                </LinearLayout>
++                <!-- weather (Обои и стиль → Погода → «В виджете Дата») -->
++                <LinearLayout
++                    android:id="@+id/blueos_weather_box"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="6dp"
++                    android:gravity="center_vertical"
++                    android:orientation="horizontal"
++                    android:visibility="gone">
++                    <ImageView
++                        android:id="@+id/blueos_weather_icon"
++                        android:layout_width="16dp"
++                        android:layout_height="16dp"
++                        android:layout_marginEnd="3dp"
++                        android:contentDescription="@null"
++                        android:tint="@color/blueos_widget_on_surface" />
++                    <TextView
++                        android:id="@+id/blueos_weather"
++                        android:layout_width="wrap_content"
++                        android:layout_height="wrap_content"
++                        android:fontFamily="google-sans-text"
++                        android:singleLine="true"
++                        android:textColor="@color/blueos_widget_on_surface"
++                        android:textSize="13sp" />
++                </LinearLayout>
++                <include layout="@layout/blueos_cal_events" />
++            </LinearLayout>
++
++            <Space
++                android:layout_width="14dp"
++                android:layout_height="match_parent" />
++
++            <include
++                layout="@layout/blueos_cal_grid_small"
++                android:layout_width="0dp"
++                android:layout_height="match_parent"
++                android:layout_weight="62" />
++        </LinearLayout>
++    </FrameLayout>
++</FrameLayout>
+diff --git a/app/src/main/res/layout/blueos_month_widget.xml b/app/src/main/res/layout/blueos_month_widget.xml
+new file mode 100644
+index 00000000..96d4e083
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_month_widget.xml
+@@ -0,0 +1,46 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 «Date and calendar», 2+ rows: the month; from 3 rows the next events under it
++     (generated by scripts-claude/cal_layouts.py) -->
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:padding="8dp">
++
++    <!-- The card keeps 8 dp inside the widget's cells, like every BlueOS widget -->
++    <FrameLayout
++        android:id="@android:id/background"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:background="@drawable/blueos_widget_outline"
++        android:clipToOutline="true">
++
++        <ImageView
++            android:id="@+id/blueos_widget_bg"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_card" />
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:clipChildren="false"
++            android:orientation="vertical"
++            android:padding="12dp">
++            <include
++                layout="@layout/blueos_cal_grid"
++                android:layout_width="match_parent"
++                android:layout_height="0dp"
++                android:layout_weight="1" />
++            <View
++                android:id="@+id/blueos_cal_divider"
++                android:layout_width="match_parent"
++                android:layout_height="1dp"
++                android:layout_marginTop="10dp"
++                android:alpha="0.18"
++                android:background="@color/blueos_widget_on_surface_variant" />
++            <include layout="@layout/blueos_cal_events" />
++        </LinearLayout>
++    </FrameLayout>
++</FrameLayout>
+diff --git a/app/src/main/res/layout/blueos_month_widget_small.xml b/app/src/main/res/layout/blueos_month_widget_small.xml
+new file mode 100644
+index 00000000..c2639183
+--- /dev/null
++++ b/app/src/main/res/layout/blueos_month_widget_small.xml
+@@ -0,0 +1,46 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- BlueOS 0.9 «Date and calendar», 2+ rows: the month; from 3 rows the next events under it
++     (generated by scripts-claude/cal_layouts.py) -->
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:padding="8dp">
++
++    <!-- The card keeps 8 dp inside the widget's cells, like every BlueOS widget -->
++    <FrameLayout
++        android:id="@android:id/background"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:background="@drawable/blueos_widget_outline"
++        android:clipToOutline="true">
++
++        <ImageView
++            android:id="@+id/blueos_widget_bg"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:contentDescription="@null"
++            android:scaleType="fitXY"
++            android:src="@drawable/blueos_widget_card" />
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:clipChildren="false"
++            android:orientation="vertical"
++            android:padding="12dp">
++            <include
++                layout="@layout/blueos_cal_grid_small"
++                android:layout_width="match_parent"
++                android:layout_height="0dp"
++                android:layout_weight="1" />
++            <View
++                android:id="@+id/blueos_cal_divider"
++                android:layout_width="match_parent"
++                android:layout_height="1dp"
++                android:layout_marginTop="10dp"
++                android:alpha="0.18"
++                android:background="@color/blueos_widget_on_surface_variant" />
++            <include layout="@layout/blueos_cal_events" />
++        </LinearLayout>
++    </FrameLayout>
++</FrameLayout>
+diff --git a/app/src/main/res/values-night/blueos_widget_colors.xml b/app/src/main/res/values-night/blueos_widget_colors.xml
+index 72d408c9..3ad2dba7 100644
+--- a/app/src/main/res/values-night/blueos_widget_colors.xml
++++ b/app/src/main/res/values-night/blueos_widget_colors.xml
+@@ -7,4 +7,5 @@
+     <color name="blueos_widget_primary">@android:color/system_primary_dark</color>
+     <color name="blueos_widget_primary_container">@android:color/system_primary_container_dark</color>
+     <color name="blueos_widget_on_primary_container">@android:color/system_on_primary_container_dark</color>
++    <color name="blueos_widget_on_primary">@android:color/system_on_primary_dark</color>
+ </resources>
+diff --git a/app/src/main/res/values-ru/blueos_strings.xml b/app/src/main/res/values-ru/blueos_strings.xml
+index 834a6e01..6ab88b33 100644
+--- a/app/src/main/res/values-ru/blueos_strings.xml
++++ b/app/src/main/res/values-ru/blueos_strings.xml
+@@ -1,11 +1,13 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <string name="blueos_date_widget">Дата и календарь</string>
+-    <string name="blueos_date_widget_description">Сегодняшняя дата и ближайшие события</string>
++    <string name="blueos_date_widget_description">Сегодняшняя дата и ближайшие события; растяните — появится месяц</string>
+     <string name="blueos_date_widget_no_events_short">Событий нет</string>
+     <string name="blueos_date_widget_no_access_short">Откройте календарь</string>
+     <string name="blueos_date_widget_no_events">Ближайших событий нет</string>
+     <string name="blueos_date_widget_no_access">Откройте «Календарь», чтобы видеть события</string>
++    <string name="blueos_date_widget_prev">Предыдущий месяц</string>
++    <string name="blueos_date_widget_next">Следующий месяц</string>
+     <string name="blueos_date_widget_tomorrow">Завтра, <xliff:g id="time" example="10:00">%1$s</xliff:g></string>
+ 
+     <string name="blueos_countdown_widget">Обратный отсчёт</string>
+diff --git a/app/src/main/res/values/blueos_strings.xml b/app/src/main/res/values/blueos_strings.xml
+index 2b720311..ecc016ea 100644
+--- a/app/src/main/res/values/blueos_strings.xml
++++ b/app/src/main/res/values/blueos_strings.xml
+@@ -2,12 +2,14 @@
+ <!-- BlueOS calendar widgets -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <string name="blueos_date_widget">Date and calendar</string>
+-    <string name="blueos_date_widget_description">Today\'s date and the next events</string>
++    <string name="blueos_date_widget_description">Today\'s date and the next events; stretch it to see the month</string>
+     <string name="blueos_date_widget_no_events">No upcoming events</string>
+     <string name="blueos_date_widget_no_events_short">No events</string>
+     <string name="blueos_date_widget_no_access_short">Open Calendar</string>
+     <string name="blueos_date_widget_no_access">Open Calendar to show your events</string>
+     <!-- An event tomorrow; the start time -->
++    <string name="blueos_date_widget_prev">Previous month</string>
++    <string name="blueos_date_widget_next">Next month</string>
+     <string name="blueos_date_widget_tomorrow">Tomorrow, <xliff:g id="time" example="10:00">%1$s</xliff:g></string>
+ 
+     <!-- Countdown widget: days until a date the user picks -->
+diff --git a/app/src/main/res/values/blueos_widget_colors.xml b/app/src/main/res/values/blueos_widget_colors.xml
+index 5ab84cfd..d3822d73 100644
+--- a/app/src/main/res/values/blueos_widget_colors.xml
++++ b/app/src/main/res/values/blueos_widget_colors.xml
+@@ -7,4 +7,5 @@
+     <color name="blueos_widget_primary">@android:color/system_primary_light</color>
+     <color name="blueos_widget_primary_container">@android:color/system_primary_container_light</color>
+     <color name="blueos_widget_on_primary_container">@android:color/system_on_primary_container_light</color>
++    <color name="blueos_widget_on_primary">@android:color/system_on_primary_light</color>
+ </resources>

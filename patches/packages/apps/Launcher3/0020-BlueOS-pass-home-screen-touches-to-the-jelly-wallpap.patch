@@ -1,0 +1,94 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 22:47:32 +0700
+Subject: [PATCH 20/23] BlueOS: pass home screen touches to the jelly wallpaper
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I2c88a0ee06b94282d0c236763ef39c70fabc01c6
+---
+ .../launcher3/blueos/BlueOSJellyTouch.kt      | 62 +++++++++++++++++++
+ .../touch/WorkspaceTouchListener.java         |  2 +
+ 2 files changed, 64 insertions(+)
+ create mode 100644 src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt b/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+new file mode 100644
+index 0000000000..ffbd6974ec
+--- /dev/null
++++ b/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2026 BlueOS
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.launcher3.blueos
++
++import android.app.WallpaperManager
++import android.view.MotionEvent
++import android.view.View
++import org.blueos.arona.BlueOSJelly
++
++/**
++ * BlueOS 0.9 «Желе на обоях»: a finger on the home screen's empty space goes to the wallpaper as commands (the
++ * wallpaper lives in SystemUI): down, moves (at most one per frame) and up — the area under it follows the finger.
++ * Only while the jelly is on for the home screen and some picture has areas.
++ */
++object BlueOSJellyTouch {
++    private var active = false
++    private var lastMove = 0L
++
++    @JvmStatic
++    fun forward(view: View, ev: MotionEvent) {
++        val a = ev.actionMasked
++        if (a == MotionEvent.ACTION_DOWN) {
++            active = try {
++                val c = BlueOSJelly.read(view.context.contentResolver)
++                c.on && c.home && c.pics.values.any { it.isNotEmpty() }
++            } catch (e: RuntimeException) { false }
++        }
++        if (!active) return
++        val cmd = when (a) {
++            MotionEvent.ACTION_DOWN -> BlueOSJelly.CMD_DOWN
++            MotionEvent.ACTION_MOVE -> {
++                if (ev.eventTime - lastMove < 16) return
++                lastMove = ev.eventTime
++                BlueOSJelly.CMD_MOVE
++            }
++            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> BlueOSJelly.CMD_UP
++            else -> return
++        }
++        if (cmd == BlueOSJelly.CMD_UP) active = false
++        val token = view.windowToken ?: return
++        try {
++            WallpaperManager.getInstance(view.context)
++                .sendWallpaperCommand(token, cmd, ev.rawX.toInt(), ev.rawY.toInt(), 0, null)
++        } catch (e: RuntimeException) {
++            // the wallpaper may be gone for a moment (being changed): nothing to wiggle then
++        }
++    }
++}
+diff --git a/src/com/android/launcher3/touch/WorkspaceTouchListener.java b/src/com/android/launcher3/touch/WorkspaceTouchListener.java
+index b2a5e3d1bb..248338722a 100644
+--- a/src/com/android/launcher3/touch/WorkspaceTouchListener.java
++++ b/src/com/android/launcher3/touch/WorkspaceTouchListener.java
+@@ -94,6 +94,8 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
+ 
+     @Override
+     public boolean onTouch(View view, MotionEvent ev) {
++        // BlueOS 0.9 «Желе на обоях»: the wallpaper's areas follow a finger on empty space
++        com.android.launcher3.blueos.BlueOSJellyTouch.forward(mWorkspace, ev);
+         // TODO(http://b/465503610): Unify touch delegation logic into CustomEventsTouchHandler
+         if (mBoxSelectionHelper != null) {
+             mBoxSelectionHelper.onTouchEvent(ev);

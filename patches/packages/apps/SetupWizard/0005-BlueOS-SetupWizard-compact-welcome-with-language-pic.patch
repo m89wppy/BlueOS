@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sat, 24 Oct 2026 23:36:47 +0200
-Subject: [PATCH 5/5] BlueOS: SetupWizard: compact welcome with language picker
+Subject: [PATCH 5/6] BlueOS: SetupWizard: compact welcome with language picker
  replaces Google's
 
 Google SUW starts before the user is unlocked; the partner (this app) was not

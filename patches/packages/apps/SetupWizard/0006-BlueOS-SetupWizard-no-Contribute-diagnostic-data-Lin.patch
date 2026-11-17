@@ -1,0 +1,67 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Fri, 13 Nov 2026 06:57:43 +0700
+Subject: [PATCH 6/6] =?UTF-8?q?BlueOS:=20SetupWizard:=20no=20=C2=ABContrib?=
+ =?UTF-8?q?ute=20diagnostic=20data=C2=BB=20=E2=80=94=20LineageOS=20statist?=
+ =?UTF-8?q?ics=20stay=20off?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I14df7d51f52c7bd24cbe1fdd6919ea08d93de753
+---
+ .../settings/LineageSettingsActivity.kt       | 23 ++++++++++---------
+ 1 file changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+index 7e68e96..3d0d630 100644
+--- a/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
++++ b/app/src/main/java/org/lineageos/setupwizard/settings/LineageSettingsActivity.kt
+@@ -10,6 +10,7 @@ import android.content.Context
+ import android.os.Bundle
+ import android.os.UserHandle
+ import android.text.TextUtils
++import com.google.android.setupcompat.util.ResultCodes.RESULT_SKIP
+ import lineageos.hardware.LineageHardwareManager
+ import lineageos.providers.LineageSettings
+ import org.lineageos.setupwizard.DISABLE_NAV_KEYS
+@@ -31,15 +32,17 @@ class LineageSettingsActivity : BaseSetupWizardActivity() {
+         val osName = getString(R.string.os_name)
+         setDescriptionText(buildDescription(osName))
+ 
+-        val metricsHelpImproveLineage = getString(R.string.services_help_improve_cm, osName)
+-        metricsItem.summary =
+-            getString(R.string.services_metrics_label, metricsHelpImproveLineage, osName, osName)
+-        metricsItem.setOnCheckedChangeListener { isChecked ->
+-            SetupWizardApp.settingsBundle.putBoolean(KEY_SEND_METRICS, isChecked)
+-        }
++        // BlueOS: no «Contribute diagnostic data» — nothing is sent to LineageOS' statistics (STATS_COLLECTION = 0)
++        metricsItem.isVisible = false
++        SetupWizardApp.settingsBundle.putBoolean(KEY_SEND_METRICS, false)
+ 
+         supportsKeyDisabler = isKeyDisablerSupported(this)
+         navKeysItem.isVisible = supportsKeyDisabler
++        if (!supportsKeyDisabler) {
++            // BlueOS: nothing left on this page without hardware keys
++            finishAction(RESULT_SKIP)
++            return
++        }
+         navKeysItem.setOnCheckedChangeListener { isChecked ->
+             SetupWizardApp.settingsBundle.putBoolean(DISABLE_NAV_KEYS, isChecked)
+         }
+@@ -71,11 +74,9 @@ class LineageSettingsActivity : BaseSetupWizardActivity() {
+         )
+ 
+     private fun updateMetricsOption() {
+-        val myPageBundle = SetupWizardApp.settingsBundle
+-        val metricsChecked =
+-            !myPageBundle.containsKey(KEY_SEND_METRICS) || myPageBundle.getBoolean(KEY_SEND_METRICS)
+-        metricsItem.isChecked = metricsChecked
+-        myPageBundle.putBoolean(KEY_SEND_METRICS, metricsChecked)
++        // BlueOS: always off (the switch is hidden)
++        metricsItem.isChecked = false
++        SetupWizardApp.settingsBundle.putBoolean(KEY_SEND_METRICS, false)
+     }
+ 
+     private fun updateDisableNavkeysOption() {

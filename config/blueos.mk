@@ -52,6 +52,10 @@ PRODUCT_COPY_FILES += \
     $(call blueos_copy,$(BLUEOS_PLANA)/spine,NP0035_spr.*,media/blueos/spine/plana) \
     $(call blueos_copy,$(BLUEOS_PLANA)/voice,*.ogg,media/blueos/plana/voice)
 
+# 0.9: the chibis' own sounds (pick up, hop, land; tools/make-chibi-sfx.py, ours). Their models and
+# voices come from the user (Settings > «Файлы персонажа» → /data/misc/blueos/chibi).
+PRODUCT_COPY_FILES += $(call blueos_copy,vendor/blueos/media/chibi/sfx,*.ogg,media/blueos/chibi/sfx)
+
 # Optional: the gallery's built-in sticker for its photo widget
 PRODUCT_COPY_FILES += $(call blueos_copy,vendor/blueos/media/stickers,*.png,media/blueos/stickers)
 

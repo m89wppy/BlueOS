@@ -1,0 +1,549 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 02:29:37 +0700
+Subject: [PATCH 36/42] =?UTF-8?q?BlueOS:=20SystemUI:=20=C2=AB=D0=9B=D0=BE?=
+ =?UTF-8?q?=D0=B1=D0=B1=D0=B8=C2=BB=20=E2=80=94=20a=20memorial=20lobby=20o?=
+ =?UTF-8?q?ne=20swipe=20right=20of=20the=20lock=20screen,=20landscape=20by?=
+ =?UTF-8?q?=20default?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I2f8b9b01942fab51a271525346cdf7ff10d7d8f8
+---
+ .../systemui/blueos/lobby/BlueOSLobbyHost.kt  | 463 ++++++++++++++++++
+ .../lockscreen/BlueOSCharacterSection.kt      |   3 +
+ .../blueprints/DefaultKeyguardBlueprint.kt    |   3 +
+ ...NotificationShadeWindowViewController.java |   7 +
+ 4 files changed, 476 insertions(+)
+ create mode 100644 packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+new file mode 100644
+index 000000000000..1a9572443636
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+@@ -0,0 +1,463 @@
++package com.android.systemui.blueos.lobby
++
++import android.animation.Animator
++import android.animation.AnimatorListenerAdapter
++import android.animation.ValueAnimator
++import android.content.Context
++import android.database.ContentObserver
++import android.graphics.Color
++import android.graphics.Typeface
++import android.graphics.drawable.GradientDrawable
++import android.os.Handler
++import android.os.Looper
++import android.provider.Settings
++import android.text.format.DateFormat
++import android.util.TypedValue
++import android.view.Gravity
++import android.view.MotionEvent
++import android.view.VelocityTracker
++import android.view.View
++import android.view.ViewConfiguration
++import android.view.ViewGroup
++import android.view.ViewTreeObserver
++import android.view.animation.PathInterpolator
++import android.widget.FrameLayout
++import android.widget.LinearLayout
++import android.widget.TextClock
++import androidx.constraintlayout.widget.ConstraintLayout
++import androidx.constraintlayout.widget.ConstraintSet
++import com.android.systemui.bouncer.domain.interactor.PrimaryBouncerInteractor
++import com.android.systemui.communal.domain.interactor.CommunalSceneInteractor
++import com.android.systemui.dagger.qualifiers.Application
++import com.android.systemui.keyguard.domain.interactor.KeyguardInteractor
++import com.android.systemui.keyguard.shared.model.KeyguardSection
++import com.android.systemui.keyguard.shared.model.StatusBarState
++import com.android.systemui.power.domain.interactor.PowerInteractor
++import com.android.systemui.res.R
++import java.util.Locale
++import javax.inject.Inject
++import kotlin.math.abs
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Job
++import kotlinx.coroutines.launch
++import org.blueos.arona.BlueOSLobbies
++import org.blueos.arona.BlueOSLobbyView
++import org.blueos.arona.BlueOSSettings as K
++
++/**
++ * BlueOS 0.9 «Лобби»: the touch entry point. NotificationShadeWindowViewController asks here first (before the
++ * widget hub): a swipe right from the lock screen's left edge opens the lobby, and while it is open the touches are
++ * hers — except the top strip (the shade), the bottom strip (swipe up = unlock) and the right edge (back).
++ */
++object BlueOSLobby {
++    internal var host: LobbyHost? = null
++
++    /** True = the touch is the lobby's (nobody else gets it). [cancel] cancels a touch the shade already has. */
++    @JvmStatic
++    fun onTouchEvent(ev: MotionEvent, cancel: Runnable): Boolean = host?.onShadeTouch(ev, cancel) ?: false
++}
++
++/**
++ * The lobby on the lock screen (spec: mockups/blueos-0.9-lobby.html). Lives in the shade window right under
++ * notification_panel (so the lock screen's status bar stays over it, and the keyguard scrim doesn't dim it); the
++ * lock screen (keyguard root, notifications, our dimming and Arona's chip) slides away to the right while the lobby
++ * comes in from the left — the widget hub's mirror. Its alpha follows the keyguard root's, so the shade, the bouncer
++ * and unlocking fade it out exactly like the lock screen.
++ */
++class BlueOSLobbySection
++@Inject
++constructor(
++    private val keyguardInteractor: KeyguardInteractor,
++    private val powerInteractor: PowerInteractor,
++    private val bouncerInteractor: PrimaryBouncerInteractor,
++    private val communalSceneInteractor: CommunalSceneInteractor,
++    @Application private val scope: CoroutineScope,
++) : KeyguardSection() {
++    private var host: LobbyHost? = null
++    private val jobs = mutableListOf<Job>()
++
++    override fun addViews(constraintLayout: ConstraintLayout) {
++        if (host != null) return
++        val root = constraintLayout.parent as? ViewGroup ?: return
++        val panel = root.findViewById<View>(R.id.notification_panel)
++        val h = LobbyHost(root.context, root, constraintLayout)
++        val at = if (panel != null && panel.parent === root) root.indexOfChild(panel) else 0
++        root.addView(h, at, ViewGroup.LayoutParams(-1, -1))
++        host = h
++        BlueOSLobby.host = h
++    }
++
++    override fun bindData(constraintLayout: ConstraintLayout) {
++        jobs.forEach { it.cancel() }
++        jobs.clear()
++        jobs += scope.launch { keyguardInteractor.isDozing.collect { host?.dozing = it } }
++        jobs += scope.launch { keyguardInteractor.isKeyguardShowing.collect { host?.showing = it } }
++        jobs += scope.launch { keyguardInteractor.isKeyguardOccluded.collect { host?.occluded = it } }
++        jobs += scope.launch { powerInteractor.isAwake.collect { host?.awake = it } }
++        jobs += scope.launch { keyguardInteractor.statusBarState.collect { host?.onKeyguard = it == StatusBarState.KEYGUARD } }
++        jobs += scope.launch { bouncerInteractor.isShowing.collect { host?.bouncer = it } }
++        jobs += scope.launch { communalSceneInteractor.isCommunalVisible.collect { host?.hub = it } }
++    }
++
++    override fun applyConstraints(constraintSet: ConstraintSet) {}
++
++    override fun removeViews(constraintLayout: ConstraintLayout) {
++        jobs.forEach { it.cancel() }
++        jobs.clear()
++        host?.let { h ->
++            h.release()
++            (h.parent as? ViewGroup)?.removeView(h)
++            if (BlueOSLobby.host === h) BlueOSLobby.host = null
++        }
++        host = null
++    }
++}
++
++internal class LobbyHost(context: Context, private val window: ViewGroup, private val keyguardRoot: View) :
++    FrameLayout(context) {
++
++    private val dp = resources.displayMetrics.density
++    private val edge = 40 * dp          // communal_right_edge_swipe_region_width, mirrored
++    private val topZone = 64 * dp       // communal_top_edge_swipe_region_height: the shade
++    private val bottomZone = 140 * dp   // communal_bottom_edge_swipe_region_height: swipe up = unlock
++    private val slop = ViewConfiguration.get(context).scaledTouchSlop
++    private val main = Handler(Looper.getMainLooper())
++
++    val lobby = BlueOSLobbyView(context).apply { active = false }
++    private val shade = View(context)                      // the soft dark gradient under the clock
++    private val clockBox = LinearLayout(context)
++    private val time = TextClock(context)
++    private val date = TextClock(context)
++
++    // ---------------------------------------------------------------- state from SystemUI's flows
++    var dozing = false; set(v) { field = v; stateChanged() }
++    var showing = false; set(v) { field = v; stateChanged() }
++    var occluded = false; set(v) { field = v; stateChanged() }
++    var awake = true; set(v) { field = v; stateChanged() }
++    var onKeyguard = true; set(v) { field = v; stateChanged() }
++    var bouncer = false; set(v) { field = v; stateChanged() }
++    var hub = false; set(v) { field = v; stateChanged() }
++
++    // ---------------------------------------------------------------- settings
++    private var enabled = true
++    private var clockMode = 2
++    private var fpIcon = true
++    private var autohide = false
++    private var loadedName: String? = null
++    private var loaded = false
++
++    /** 0 = the lock screen, 1 = the lobby fully in. */
++    private var progress = 0f
++    private var settle: ValueAnimator? = null
++
++    init {
++        visibility = INVISIBLE
++        addView(lobby, LayoutParams(-1, -1))
++        shade.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
++            intArrayOf(0x66000000, 0x26000000, 0x00000000))
++        addView(shade, LayoutParams(-1, (190 * dp).toInt(), Gravity.TOP))
++        clockBox.orientation = LinearLayout.VERTICAL
++        time.apply {
++            setTextColor(Color.WHITE)
++            setTextSize(TypedValue.COMPLEX_UNIT_SP, 44f)
++            typeface = Typeface.create("blueos-clock", Typeface.NORMAL)
++            setShadowLayer(6 * dp, 0f, dp, 0x73000000)
++            includeFontPadding = false
++        }
++        date.apply {
++            setTextColor(Color.WHITE)
++            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
++            typeface = Typeface.create(Typeface.create("google-sans-text", Typeface.NORMAL), Typeface.BOLD)
++            setShadowLayer(6 * dp, 0f, dp, 0x73000000)
++            alpha = 0.92f
++        }
++        clockBox.addView(time, LinearLayout.LayoutParams(-2, -2))
++        clockBox.addView(date, LinearLayout.LayoutParams(-2, -2).apply { topMargin = (4 * dp).toInt() })
++        addView(clockBox, LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
++            leftMargin = (28 * dp).toInt(); topMargin = (62 * dp).toInt()
++        })
++    }
++
++    private val observer by lazy { object : ContentObserver(main) {
++        override fun onChange(selfChange: Boolean) {
++            readSettings()
++            lobby.readSettings()
++            stateChanged()
++        }
++    } }
++
++    fun release() {
++        context.contentResolver.unregisterContentObserver(observer)
++        window.viewTreeObserver.removeOnPreDrawListener(preDraw)
++        closeNow()
++        unload()
++    }
++
++    private fun readSettings() {
++        val cr = context.contentResolver
++        enabled = K.int(cr, K.LOBBY_ON) != 0
++        clockMode = K.int(cr, K.LOBBY_CLOCK).coerceIn(0, 2)
++        fpIcon = K.int(cr, K.LOBBY_FP) != 0
++        autohide = K.int(cr, K.LOBBY_AUTOHIDE) != 0
++        clockBox.visibility = if (clockMode == 0) GONE else VISIBLE
++        date.visibility = if (clockMode == 2) VISIBLE else GONE
++        shade.visibility = clockBox.visibility
++        DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM").let { date.format12Hour = it; date.format24Hour = it }
++        touched()
++    }
++
++    // ---------------------------------------------------------------- loading: while the lock screen is there
++
++    private fun stateChanged() {
++        // the lobby goes away with the screen, the unlock, an app over the lock screen and the hub
++        if (progress > 0f && (!enabled || !awake || dozing || !showing || occluded || hub)) closeNow()
++        val want = enabled && showing && !occluded
++        val chosen = if (want) BlueOSLobbies.chosen(context) else null
++        if (chosen == null) { if (loadedName != null) unload(); return }
++        if (chosen.name != loadedName) {
++            loadedName = chosen.name
++            loaded = false
++            lobby.onLoaded = { l, ok -> if (l?.name == loadedName) loaded = ok }
++            lobby.show(chosen)
++        }
++    }
++
++    private fun unload() {
++        loadedName = null
++        loaded = false
++        lobby.clear()
++        BlueOSLobbies.release()
++    }
++
++    private fun canOpen() = enabled && loaded && showing && awake && !dozing && !occluded && onKeyguard && !bouncer &&
++        !hub && keyguardRoot.alpha > 0.99f
++
++    /** Fully in and nothing over it (the shade, the bouncer): her touches are hers. */
++    private fun interactive() = progress >= 1f && settle == null && onKeyguard && !bouncer && keyguardRoot.alpha > 0.99f
++
++    // ---------------------------------------------------------------- gestures
++
++    private enum class G { NONE, PASS, SWALLOW, MAYBE_OPEN, DRAG, HER }
++    private var g = G.NONE
++    private var downX = 0f
++    private var downY = 0f
++    private var dragFrom = 0f
++    private var cancelling = false
++    private var velocity: VelocityTracker? = null
++
++    fun onShadeTouch(ev: MotionEvent, cancel: Runnable): Boolean {
++        if (cancelling) return false                     // our own cancel for the others: it's theirs
++        val w = window.width.toFloat().takeIf { it > 0 } ?: return false
++        val h = window.height.toFloat()
++        val action = ev.actionMasked
++        if (action == MotionEvent.ACTION_DOWN) {
++            g = G.NONE
++            downX = ev.x; downY = ev.y
++            velocity?.recycle(); velocity = null
++            g = when {
++                interactive() -> {
++                    touched()
++                    when {
++                        ev.y < topZone -> G.PASS                                 // the shade
++                        ev.x > w - edge -> G.DRAG                                // back to the lock screen
++                        ev.y > h - bottomZone -> G.PASS                          // swipe up: the bouncer
++                        else -> G.HER
++                    }
++                }
++                progress == 0f && settle == null && ev.x < edge && ev.y > topZone && canOpen() -> G.MAYBE_OPEN
++                settle != null && onKeyguard && !bouncer -> G.SWALLOW            // it's moving: wait for it
++                else -> G.PASS
++            }
++            when (g) {
++                G.HER -> lobby.dispatchTouchEvent(ev)
++                G.DRAG -> beginDrag()
++                else -> {}
++            }
++            if (g == G.DRAG || g == G.MAYBE_OPEN) velocity = VelocityTracker.obtain().also { it.addMovement(ev) }
++            return g == G.HER || g == G.DRAG || g == G.SWALLOW               // MAYBE_OPEN: a tap stays the lock screen's
++        }
++        val end = action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL
++        velocity?.addMovement(ev)
++        when (g) {
++            G.NONE, G.PASS -> { if (end) g = G.NONE; return false }
++            G.SWALLOW -> { if (end) g = G.NONE; return true }
++            G.HER -> {
++                lobby.dispatchTouchEvent(ev)
++                if (end) g = G.NONE
++                return true
++            }
++            G.MAYBE_OPEN -> {
++                val dx = ev.x - downX
++                val dy = ev.y - downY
++                if (!end && dx > slop && dx > abs(dy) * 1.2f) {
++                    g = G.DRAG
++                    // the shade and the lock screen had this finger: they let go of it
++                    cancelling = true
++                    try { cancel.run() } finally { cancelling = false }
++                    beginDrag()
++                    downX = ev.x
++                    return true
++                }
++                if (end || abs(dy) > slop || dx < -slop) {
++                    g = if (end) G.NONE else G.PASS
++                    velocity?.recycle(); velocity = null
++                }
++                return false
++            }
++            G.DRAG -> {
++                setProgress((dragFrom + (ev.x - downX) / w).coerceIn(0f, 1f))
++                if (end) {
++                    val v = velocity?.let { it.computeCurrentVelocity(1000); it.xVelocity } ?: 0f
++                    velocity?.recycle(); velocity = null
++                    val fling = 800 * dp
++                    val open = action == MotionEvent.ACTION_UP &&
++                        (v > fling || (v > -fling && progress > if (dragFrom > 0.5f) 0.65f else 0.35f))
++                    settleTo(if (open) 1f else 0f)
++                    g = G.NONE
++                }
++                return true
++            }
++        }
++    }
++
++    private fun beginDrag() {
++        settle?.cancel(); settle = null
++        dragFrom = progress
++        if (progress == 0f) {
++            // she must be running before her intro starts: its first frame carries the lobby's music
++            visibility = VISIBLE
++            lobby.readSettings()
++            lobby.active = true
++            lobby.enter()                               // her intro, as in the game, while she slides in
++            touched()
++        }
++    }
++
++    private fun settleTo(target: Float) {
++        settle?.cancel()
++        val from = progress
++        if (from == target) { settled(target); return }
++        settle = ValueAnimator.ofFloat(from, target).apply {
++            duration = (180 + 220 * abs(target - from)).toLong()
++            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
++            addUpdateListener { setProgress(it.animatedValue as Float) }
++            addListener(object : AnimatorListenerAdapter() {
++                override fun onAnimationEnd(a: Animator) {
++                    if (settle === a) { settle = null; settled(target) }
++                }
++            })
++            start()
++        }
++    }
++
++    private fun settled(target: Float) {
++        setProgress(target)
++        if (target == 0f) restoreLockScreen()
++    }
++
++    /** At once, no animation: the screen went off, the phone was unlocked, an app came over the lock screen. */
++    fun closeNow() {
++        settle?.cancel(); settle = null
++        g = G.NONE
++        velocity?.recycle(); velocity = null
++        setProgress(0f)
++        restoreLockScreen()
++    }
++
++    private fun setProgress(p: Float) {
++        progress = p
++        apply()
++        window.invalidate()
++    }
++
++    // ---------------------------------------------------------------- the slide (re-applied every frame: SystemUI's
++    // own binders set the keyguard root's translation and alpha too, and ours must win while the lobby is out)
++
++    private val preDraw by lazy { ViewTreeObserver.OnPreDrawListener { if (progress > 0f) apply(); true } }
++    private var moved = false
++
++    private fun lockViews(): List<View> {
++        val out = mutableListOf(keyguardRoot)
++        window.findViewById<View>(R.id.shared_notification_container)?.let { out += it }
++        for (i in 0 until window.childCount) {
++            val c = window.getChildAt(i)
++            if (c.tag == LOCK_LAYER) out += c                         // our dimming and Arona's chip
++        }
++        // the scene turned sideways: the portrait status bar would sit along her side — it slides away too
++        if (lobby.sideways) window.findViewById<View>(R.id.keyguard_header)?.let { out += it }
++        return out
++    }
++
++    private fun apply() {
++        val w = window.width.toFloat()
++        if (progress <= 0f) {
++            if (settle == null && g != G.DRAG) {
++                if (visibility != INVISIBLE) visibility = INVISIBLE
++                lobby.active = false
++            }
++            return
++        }
++        if (visibility != VISIBLE) visibility = VISIBLE
++        val me = (progress - 1f) * w
++        if (translationX != me) translationX = me
++        val shift = progress * w
++        for (v in lockViews()) if (v.translationX != shift) v.translationX = shift
++        if (!lobby.sideways) window.findViewById<View>(R.id.keyguard_header)?.let { if (it.translationX != 0f) it.translationX = 0f }
++        // the portrait clock over a sideways scene would be on its side: only when upright
++        val cv = if (clockMode == 0 || lobby.sideways) GONE else VISIBLE
++        if (clockBox.visibility != cv) { clockBox.visibility = cv; shade.visibility = cv }
++        moved = true
++        // the fingerprint icon stays where it is, over the lobby (it is in the keyguard root, which slides away)
++        keyguardRoot.findViewById<View>(R.id.device_entry_icon_view)?.let { icon ->
++            val stay = if (fpIcon && !hidden) -shift else 0f
++            if (icon.translationX != stay) icon.translationX = stay
++        }
++        // the shade, the bouncer and unlocking fade the lock screen: the lobby fades with it
++        val a = keyguardRoot.alpha
++        if (alpha != a) alpha = a
++        lobby.active = a > 0.01f
++    }
++
++    private fun restoreLockScreen() {
++        visibility = INVISIBLE
++        lobby.active = false
++        translationX = 0f
++        if (!moved) return
++        moved = false
++        for (v in lockViews()) v.translationX = 0f
++        window.findViewById<View>(R.id.keyguard_header)?.translationX = 0f
++        keyguardRoot.findViewById<View>(R.id.device_entry_icon_view)?.translationX = 0f
++    }
++
++    // ---------------------------------------------------------------- «Прятать, пока не трогаю»
++
++    private var hidden = false
++    private val hide = Runnable { setHidden(true) }
++
++    private fun touched() {
++        main.removeCallbacks(hide)
++        setHidden(false)
++        if (autohide) main.postDelayed(hide, 3000)
++    }
++
++    private fun setHidden(h: Boolean) {
++        if (hidden == h) return
++        hidden = h
++        val a = if (h) 0f else 1f
++        clockBox.animate().alpha(a).setDuration(300).start()
++        shade.animate().alpha(a).setDuration(300).start()
++        if (progress > 0f) apply()
++    }
++
++    // last: everything it uses is declared above
++    init {
++        readSettings()
++        K.LOBBY_KEYS.forEach { context.contentResolver.registerContentObserver(Settings.Secure.getUriFor(it), false, observer) }
++        window.viewTreeObserver.addOnPreDrawListener(preDraw)
++    }
++
++    companion object {
++        /** Tag of the shade window's lock screen layers (BlueOSCharacterSection): they slide away with the lock screen. */
++        const val LOCK_LAYER = "blueos_lock_layer"
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
+index a652063bdfdd..cbaa7afe9d30 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/lockscreen/BlueOSCharacterSection.kt
+@@ -83,6 +83,9 @@ constructor(
+         // the chip goes above the notifications (right after their container in the shade window)
+         val root = constraintLayout.parent as? ViewGroup
+         val notifs = root?.findViewById<View>(R.id.shared_notification_container)
++        // 0.9: both layers slide away with the lock screen when the lobby comes in (BlueOSLobbyHost)
++        h.chipLayer.tag = com.android.systemui.blueos.lobby.LobbyHost.LOCK_LAYER
++        h.protection.tag = com.android.systemui.blueos.lobby.LobbyHost.LOCK_LAYER
+         if (root != null && notifs != null && notifs.parent === root) root.addView(h.chipLayer, root.indexOfChild(notifs) + 1)
+         else constraintLayout.addView(h.chipLayer)
+         h.notifs = notifs
+diff --git a/packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/blueprints/DefaultKeyguardBlueprint.kt b/packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/blueprints/DefaultKeyguardBlueprint.kt
+index 1e311483a6af..f2cbe561bbf4 100644
+--- a/packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/blueprints/DefaultKeyguardBlueprint.kt
++++ b/packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/blueprints/DefaultKeyguardBlueprint.kt
+@@ -18,6 +18,7 @@
+ package com.android.systemui.keyguard.ui.view.layout.blueprints
+ 
+ import com.android.systemui.blueos.lockscreen.BlueOSCharacterSection
++import com.android.systemui.blueos.lobby.BlueOSLobbySection
+ import com.android.systemui.dagger.SysUISingleton
+ import com.android.systemui.keyguard.shared.model.KeyguardBlueprint
+ import com.android.systemui.keyguard.shared.model.KeyguardSection
+@@ -71,12 +72,14 @@ constructor(
+     keyguardSliceViewSection: KeyguardSliceViewSection,
+     udfpsAccessibilityOverlaySection: DefaultUdfpsAccessibilityOverlaySection,
+     blueOSCharacterSection: BlueOSCharacterSection,
++    blueOSLobbySection: BlueOSLobbySection,
+ ) : KeyguardBlueprint {
+     override val id: String = DEFAULT
+ 
+     override val sections =
+         listOfNotNull(
+             blueOSCharacterSection, // BlueOS: live Arona — FIRST, so everything else is above her
++            blueOSLobbySection, // BlueOS 0.9 «Лобби»: in the shade window, under the panel (no views in here)
+             accessibilityActionsSection,
+             defaultIndicationAreaSection,
+             defaultShortcutsSection,
+diff --git a/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java b/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
+index 214bb85fce1e..f15a205bd495 100644
+--- a/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/shade/NotificationShadeWindowViewController.java
+@@ -425,6 +425,13 @@ public class NotificationShadeWindowViewController implements Dumpable {
+                     mTouchActive = false;
+                     mDownEvent = null;
+                 }
++                // BlueOS 0.9 «Лобби»: the lock screen's left edge and the lobby itself. Before the cancelled-touch
++                // check: the lobby takes a swipe over from the shade by cancelling the shade's touch.
++                if (!SceneContainerFlag.isEnabled() && !mHandlingExternalTouch
++                        && com.android.systemui.blueos.lobby.BlueOSLobby.onTouchEvent(ev,
++                                NotificationShadeWindowViewController.this::cancelCurrentTouch)) {
++                    return logDownOrFalseResultDispatch(ev, "dispatched to the BlueOS lobby", true);
++                }
+                 if (mTouchCancelled) {
+                     return logDownOrFalseResultDispatch(ev, "touch cancelled", false);
+                 }

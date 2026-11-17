@@ -1,0 +1,107 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BlueOS <blueos@localhost>
+Date: Thu, 12 Nov 2026 14:51:39 +0700
+Subject: [PATCH 15/18] BlueOS: Settings: character files add BlueOS wallpapers
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I9f38b3c8fed96aace5dd894927144c9d338976b0
+---
+ res/values-ru/blueos_strings.xml                |  4 +++-
+ res/values/blueos_strings.xml                   |  5 ++++-
+ .../settings/blueos/BlueOSAssetsActivity.kt     | 17 +++++++++++++++++
+ 3 files changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/res/values-ru/blueos_strings.xml b/res/values-ru/blueos_strings.xml
+index 2d5993889a2..651ffc7cf08 100644
+--- a/res/values-ru/blueos_strings.xml
++++ b/res/values-ru/blueos_strings.xml
+@@ -49,7 +49,7 @@
+ 
+     <!-- 0.8.1: «Файлы персонажа» -->
+     <string name="blueos_assets_title">Файлы персонажа</string>
+-    <string name="blueos_assets_intro">В этой прошивке нет файлов из Blue Archive — их нельзя распространять. Если у вас есть свои файлы игры (модели Ароны и Планы, их голоса, звуки, чиби, лобби), выберите папку или архив .zip с ними — в любом виде, как распаковали. BlueOS сам найдёт нужные, проверит и добавит. Файлы останутся только на этом телефоне.</string>
++    <string name="blueos_assets_intro">В этой прошивке нет файлов из Blue Archive — их нельзя распространять. Если у вас есть свои файлы игры (модели Ароны и Планы, их голоса, звуки, чиби, лобби, обои в папке «Обои»), выберите папку или архив .zip с ними — в любом виде, как распаковали. BlueOS сам найдёт нужные, проверит и добавит. Файлы останутся только на этом телефоне.</string>
+     <string name="blueos_assets_folder">Выбрать папку</string>
+     <string name="blueos_assets_zip">Выбрать архив .zip</string>
+     <string name="blueos_assets_apply">Перезагрузить телефон</string>
+@@ -95,6 +95,8 @@
+     <string name="blueos_assets_k_lobby">Лобби</string>
+     <string name="blueos_assets_k_lobby_voice">Голоса лобби</string>
+     <string name="blueos_assets_k_lobby_music">Музыка лобби</string>
++    <string name="blueos_assets_k_wallpapers">Обои BlueOS</string>
++    <string name="blueos_assets_wallpapers">Обои: <xliff:g id="count" example="22">%d</xliff:g> («Обои и стиль» → BlueOS)</string>
+     <string name="blueos_assets_del_title">Удалить файлы персонажа</string>
+     <string name="blueos_assets_del_msg">Удалить всё добавленное (файлов: <xliff:g id="count" example="72">%d</xliff:g>) или выбрать, что именно? Каждый пункт удаляется вместе со своим голосом.</string>
+     <string name="blueos_assets_del_all">Удалить всё</string>
+diff --git a/res/values/blueos_strings.xml b/res/values/blueos_strings.xml
+index d4864c4c8e3..a55f6bcfda3 100644
+--- a/res/values/blueos_strings.xml
++++ b/res/values/blueos_strings.xml
+@@ -55,7 +55,7 @@
+ 
+     <!-- 0.8.1: the user adds the characters' files (BlueOSAssetsActivity) -->
+     <string name="blueos_assets_title">Character files</string>
+-    <string name="blueos_assets_intro">This build has no files from Blue Archive — they can\'t be shared. If you have your own game files (the Arona and Plana models, their voices, sounds, chibis, memorial lobbies), pick a folder or a .zip with them, in any layout. BlueOS finds what it needs, checks it and adds it. The files stay on this phone only.</string>
++    <string name="blueos_assets_intro">This build has no files from Blue Archive — they can\'t be shared. If you have your own game files (the Arona and Plana models, their voices, sounds, chibis, memorial lobbies, wallpapers in a folder «Wallpapers»), pick a folder or a .zip with them, in any layout. BlueOS finds what it needs, checks it and adds it. The files stay on this phone only.</string>
+     <string name="blueos_assets_folder">Pick a folder</string>
+     <string name="blueos_assets_zip">Pick a .zip archive</string>
+     <string name="blueos_assets_apply">Restart the phone</string>
+@@ -102,6 +102,9 @@
+     <string name="blueos_assets_k_lobby">Lobby</string>
+     <string name="blueos_assets_k_lobby_voice">Lobby voice</string>
+     <string name="blueos_assets_k_lobby_music">Lobby music</string>
++    <string name="blueos_assets_k_wallpapers">BlueOS wallpapers</string>
++    <!-- After adding: how many BlueOS wallpapers are on the phone (Wallpaper & style → BlueOS) -->
++    <string name="blueos_assets_wallpapers">Wallpapers: <xliff:g id="count" example="22">%d</xliff:g> (Wallpaper &amp; style → BlueOS)</string>
+     <string name="blueos_assets_del_title">Remove character files</string>
+     <string name="blueos_assets_del_msg">Remove everything you added (<xliff:g id="count" example="72">%d</xliff:g> files) or choose what exactly? Each item goes together with its voice.</string>
+     <string name="blueos_assets_del_all">Remove everything</string>
+diff --git a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+index d627f5cba46..39a70f49185 100644
+--- a/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
++++ b/src/com/android/settings/blueos/BlueOSAssetsActivity.kt
+@@ -568,6 +568,16 @@ class BlueOSAssetsActivity : Activity() {
+             rest.forEach { lobbyTune(p, it) }
+             sc.packs += p
+         }
++        // 0.9: BlueOS wallpapers — every picture in a folder named «Обои» / «Wallpaper(s)», into «Обои и стиль» →
++        // the «BlueOS» category (WallpaperPicker2 BlueOSWallpaperInfo reads $ADDED/$WALLPAPERS)
++        val walls = sources.filter { s -> s.name.substringAfterLast('.', "").lowercase() in WALLPAPER_EXT &&
++            s.path.split('/', ':').any { d -> WALLPAPER_DIRS.any { it in d } } }.distinctBy { it.name.lowercase() }
++        if (walls.isNotEmpty()) {
++            val p = Pack("${getString(R.string.blueos_assets_k_wallpapers)} · ${walls.size}",
++                File("$ADDED/$WALLPAPERS").list().orEmpty().isNotEmpty(), 1)
++            for (s in walls) p.add(s) { input -> write(input, File("$ADDED/$WALLPAPERS/${chibiName(s.name)}")) }
++            sc.packs += p
++        }
+         sc.packs.sortWith(compareBy({ it.order }, { it.title.lowercase() }))
+         return sc
+     }
+@@ -771,6 +781,8 @@ class BlueOSAssetsActivity : Activity() {
+         if (lobbiesNow > 0) lines += "✓ ${getString(R.string.blueos_assets_lobby, lobbiesNow)}"
+         val lobbyVoicedNow = File("$ADDED/$LOBBY/_voice").listFiles { f -> f.isDirectory }?.size ?: 0
+         if (lobbyVoicedNow > 0) lines += "✓ ${getString(R.string.blueos_assets_lobby_voice, lobbyVoicedNow)}"
++        val wallsNow = File("$ADDED/$WALLPAPERS").listFiles { f -> f.isFile }?.size ?: 0
++        if (wallsNow > 0) lines += "✓ ${getString(R.string.blueos_assets_wallpapers, wallsNow)}"
+         val odd = found.size - verified.size
+         if (odd > 0) lines += "\n" + getString(R.string.blueos_assets_odd, odd)
+         lines += "\n" + getString(R.string.blueos_assets_done)
+@@ -851,6 +863,7 @@ class BlueOSAssetsActivity : Activity() {
+         add(getString(R.string.blueos_assets_p_arona), "spine/arona", "spine/arona_desk", "arona")
+         add(getString(R.string.blueos_assets_p_plana), "spine/plana", "plana")
+         add(getString(R.string.blueos_assets_p_ui), "audio/ui")
++        add(getString(R.string.blueos_assets_k_wallpapers), WALLPAPERS)
+ 
+         val chibiDir = File("$ADDED/$CHIBI")
+         val chibiVoices = File(chibiDir, "voice").listFiles { f -> f.isDirectory }.orEmpty().associateBy { it.name }
+@@ -911,6 +924,10 @@ class BlueOSAssetsActivity : Activity() {
+         private val CHIBI_NEEDS = listOf("Cafe_Idle", "Cafe_Walk")
+         /** org.blueos.arona.BlueOSLobbies.DIR: the 0.9 memorial lobbies under [ADDED] */
+         private const val LOBBY = "lobby"
++        /** WallpaperPicker2 BlueOSWallpaperInfo.DIR: the 0.9 BlueOS wallpapers under [ADDED] */
++        private const val WALLPAPERS = "wallpapers"
++        private val WALLPAPER_EXT = setOf("jpg", "jpeg", "png", "webp")
++        private val WALLPAPER_DIRS = listOf("обои", "wallpaper")
+         private val LOBBY_VOICE = Regex("""^(.+?)_MemorialLobby_\d+(_\d+)?\.(ogg|wav|mp3|m4a|opus)$""", RegexOption.IGNORE_CASE)
+         /** the lobbies' music: «BGM_12_….mp3» as some lobby files name it, «Theme_12.ogg» as the game does */
+         private val LOBBY_MUSIC = Regex("""^(BGM_.+|Theme[_ ]?\d+)\.(ogg|wav|mp3|m4a|opus)$""", RegexOption.IGNORE_CASE)

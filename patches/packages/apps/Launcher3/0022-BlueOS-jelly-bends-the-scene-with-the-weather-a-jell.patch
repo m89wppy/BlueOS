@@ -1,0 +1,116 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Fri, 13 Nov 2026 12:22:18 +0700
+Subject: [PATCH 22/23] BlueOS: jelly bends the scene with the weather; a jelly
+ drag owns the gesture
+
+The moving jelly was drawn from the plain picture over the weather: the haze vanished in its areas while they moved
+(the glass widgets over them looked broken). Now the scene is drawn through the jelly as a RenderEffect.
+A finger that comes down on a jelly area and moves takes the gesture, like patting the character: no shade,
+bouncer, page swipe, all apps or long press (lock screen: shade window; home: DragLayer with blueos_wall_jelly_view).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ie4b0c0ec188dfec06d47de6f9b0f9ed10b1724fa
+---
+ .../launcher3/blueos/BlueOSJellyTouch.kt      | 40 ++++++++++++++++++-
+ .../launcher3/dragndrop/DragLayer.java        |  9 +++++
+ 2 files changed, 47 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt b/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+index 9c24f4a6d7..d7734f8c50 100644
+--- a/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
++++ b/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+@@ -17,6 +17,8 @@
+ package com.android.launcher3.blueos
+ 
+ import android.app.WallpaperManager
++import android.view.ViewConfiguration
++import android.view.WindowManager
+ import android.view.MotionEvent
+ import android.view.View
+ import org.blueos.arona.BlueOSJelly
+@@ -31,15 +33,27 @@ import org.blueos.arona.BlueOSJelly
+ object BlueOSJellyTouch {
+     private var active = false
+     private var lastMove = 0L
++    private var candidate = false
++    private var claimed = false
++    private var downX = 0f
++    private var downY = 0f
+ 
+     @JvmStatic
+     fun forward(view: View, ev: MotionEvent, allowed: Boolean) {
+         val a = ev.actionMasked
+         if (a == MotionEvent.ACTION_DOWN) {
++            claimed = false
++            candidate = false
++            downX = ev.rawX; downY = ev.rawY
+             active = allowed && try {
+                 val cr = view.context.contentResolver
+                 val c = BlueOSJelly.read(cr)
+-                c.on && c.home && c.pics.values.any { it.isNotEmpty() } && BlueOSJelly.allowed(cr)
++                (c.on && c.home && c.pics.values.any { it.isNotEmpty() } && BlueOSJelly.allowed(cr)).also { on ->
++                    if (on) {
++                        val b = view.context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
++                        candidate = BlueOSJelly.homeHit(cr, c, ev.rawX, ev.rawY, b.width(), b.height())
++                    }
++                }
+             } catch (e: RuntimeException) { false }
+         }
+         if (!active) return
+@@ -53,7 +67,7 @@ object BlueOSJellyTouch {
+             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> BlueOSJelly.CMD_UP
+             else -> return
+         }
+-        if (cmd == BlueOSJelly.CMD_UP) active = false
++        if (cmd == BlueOSJelly.CMD_UP) { active = false; candidate = false }
+         val token = view.windowToken ?: return
+         try {
+             WallpaperManager.getInstance(view.context)
+@@ -62,4 +76,26 @@ object BlueOSJellyTouch {
+             // the wallpaper may be gone for a moment (being changed): nothing to wiggle then
+         }
+     }
++
++    /**
++     * 0.9 (the user, 2026-11-13: as when patting Arona / Plana): a finger that came down on a jelly area and moved
++     * half a touch slop owns the gesture — no page swipe, shade, «Все приложения» or long press. Called after
++     * [forward]. 0 = not ours, 1 = taken just now (the caller cancels what the views saw), 2 = ours.
++     */
++    @JvmStatic
++    fun claim(view: View, ev: MotionEvent): Int = when (ev.actionMasked) {
++        MotionEvent.ACTION_MOVE -> when {
++            claimed -> 2
++            candidate && Math.hypot((ev.rawX - downX).toDouble(), (ev.rawY - downY).toDouble()) >
++                ViewConfiguration.get(view.context).scaledTouchSlop / 2.0 -> { claimed = true; candidate = false; 1 }
++            else -> 0
++        }
++        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
++            val was = claimed
++            claimed = false
++            candidate = false
++            if (was) 2 else 0
++        }
++        else -> if (claimed) 2 else 0
++    }
+ }
+diff --git a/src/com/android/launcher3/dragndrop/DragLayer.java b/src/com/android/launcher3/dragndrop/DragLayer.java
+index 7794f904d8..dd5ea8354a 100644
+--- a/src/com/android/launcher3/dragndrop/DragLayer.java
++++ b/src/com/android/launcher3/dragndrop/DragLayer.java
+@@ -259,6 +259,15 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
+             // BlueOS 0.9: a chibi takes a gesture once it is hers (a pat, a hold, a tap on her); until then the
+             // launcher sees it as usual, and when she takes it the views that saw its start get a cancel
+             if (mBlueOSChibi != null && mBlueOSChibi.dispatch(ev)) return true;
++            // BlueOS 0.9: a finger dragging a jelly area owns the gesture (like patting the character)
++            int jelly = com.android.launcher3.blueos.BlueOSJellyTouch.claim(this, ev);
++            if (jelly == 1) {
++                MotionEvent cancel = MotionEvent.obtain(ev);
++                cancel.setAction(MotionEvent.ACTION_CANCEL);
++                super.dispatchTouchEvent(cancel);
++                cancel.recycle();
++            }
++            if (jelly != 0) return true;
+             return super.dispatchTouchEvent(ev);
+         } finally {
+             ev.offsetLocation(-getTranslationX(), 0);

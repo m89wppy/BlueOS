@@ -1,0 +1,110 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Mon, 9 Nov 2026 01:17:56 +0700
+Subject: [PATCH 17/23] BlueOS: ThemePicker: chibi sounds, own monologues, stay
+ on their page
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ie89d0d9f272e1d7c6191772ecf23f01013e37cba
+---
+ res/values-ru/blueos_09_strings.xml             | 17 ++++++++++++++---
+ res/values/blueos_09_strings.xml                | 17 ++++++++++++++---
+ .../blueos/BlueOSSettingsActivity.kt            |  8 ++++++++
+ 3 files changed, 36 insertions(+), 6 deletions(-)
+
+diff --git a/res/values-ru/blueos_09_strings.xml b/res/values-ru/blueos_09_strings.xml
+index b7eb2ce5..9bb1d20c 100644
+--- a/res/values-ru/blueos_09_strings.xml
++++ b/res/values-ru/blueos_09_strings.xml
+@@ -13,16 +13,27 @@
+     <string name="blueos_s_h_chibi_life">Что они делают</string>
+     <string name="blueos_s_chibi_walk">Гуляют</string>
+     <string name="blueos_s_chibi_walk_d">Иногда идут по верхнему краю виджета или перепрыгивают на другой виджет. Если выключить, стоят там, куда их поставили</string>
++    <string name="blueos_s_chibi_stay">Остаются на своём экране</string>
++    <string name="blueos_s_chibi_stay_d">Каждая живёт на одном экране рабочего стола и уезжает вместе с ним, когда листаешь. Если выключить, они стоят на месте, а потом переходят на виджеты нового экрана</string>
+     <string name="blueos_s_chibi_sit">Сидят на краю виджета</string>
+     <string name="blueos_s_chibi_sit_d">Иногда ученица садится на верхний край виджета и болтает ногами</string>
+     <string name="blueos_s_chibi_depth">Как низко садится</string>
+-    <string name="blueos_s_chibi_depth_d">Опускается на <xliff:g id="pct" example="30">%d</xliff:g>%% своего роста — край виджета должен прийтись на сиденье</string>
++    <string name="blueos_s_chibi_depth_d">Сейчас <xliff:g id="pct" example="30">%d</xliff:g>. При 30 она садится ровно на край виджета, меньше — чуть выше, больше — чуть глубже</string>
+     <string name="blueos_s_chibi_pat">Можно гладить</string>
+     <string name="blueos_s_chibi_pat_d">Проведи пальцем по голове туда-сюда: она наклоняет голову под руку и радуется</string>
+     <string name="blueos_s_chibi_acts">Занятия, как в кафе</string>
+-    <string name="blueos_s_chibi_acts_d">Иногда садится за десерт, клавиатуру или учёбу — если такие анимации есть в её модели</string>
++    <string name="blueos_s_chibi_acts_d">Иногда играет на своём инструменте или потягивается — если такие анимации есть в её модели</string>
+     <string name="blueos_s_chibi_touch">Касания</string>
+-    <string name="blueos_s_chibi_touch_d">Нажатие — она падает и потом встаёт. Удерживай — возьмёшь в руки, отпустишь — упадёт на ближайший виджет под ней. Подарок из виджета «Подарки» — реагирует, как в кафе. Свайпы мимо неё листают экраны как обычно</string>
++    <string name="blueos_s_chibi_touch_d">Нажатие — она падает и потом встаёт. Удерживай — возьмёшь в руки, отпустишь — упадёт на ближайший виджет под ней. Поднеси её к краю экрана — перелистнётся на соседний экран. Подарок из виджета «Подарки» — реагирует, как в кафе. Свайпы мимо неё листают экраны как обычно</string>
++    <string name="blueos_s_h_chibi_sound">Звуки</string>
++    <string name="blueos_s_chibi_sound">Звуки</string>
++    <string name="blueos_s_chibi_sound_all">Звуки и голос</string>
++    <string name="blueos_s_chibi_sound_fx">Только звуки, без голоса</string>
++    <string name="blueos_s_chibi_sound_off">Без звука</string>
++    <string name="blueos_s_chibi_talk">Иногда говорят сами</string>
++    <string name="blueos_s_chibi_talk_d">Раз в несколько минут одна из них что-нибудь скажет, как в кафе</string>
++    <string name="blueos_s_chibi_sound_info">Что звучит</string>
++    <string name="blueos_s_chibi_sound_info_d">Значки над головой звучат как в игре. Прыжок, приземление и когда её берёшь — свои звуки BlueOS. Голос — если её реплики добавлены в «Файлах персонажа». Когда телефон на беззвучном или вибрации, они молчат</string>
+     <string name="blueos_s_h_chibi_look">Вид</string>
+     <string name="blueos_s_chibi_size">Размер</string>
+     <string name="blueos_s_chibi_size_s">Маленькие</string>
+diff --git a/res/values/blueos_09_strings.xml b/res/values/blueos_09_strings.xml
+index 77450cd4..55a26200 100644
+--- a/res/values/blueos_09_strings.xml
++++ b/res/values/blueos_09_strings.xml
+@@ -14,16 +14,27 @@
+     <string name="blueos_s_h_chibi_life">What they do</string>
+     <string name="blueos_s_chibi_walk">Walk around</string>
+     <string name="blueos_s_chibi_walk_d">Now and then they walk along a widget\'s top edge or hop to another widget. Off: they stay where you put them</string>
++    <string name="blueos_s_chibi_stay">Stay on their own page</string>
++    <string name="blueos_s_chibi_stay_d">Each one lives on one home screen page and slides away with it when you swipe. Off: they stay where they are and then move to the new page\'s widgets</string>
+     <string name="blueos_s_chibi_sit">Sit on a widget\'s edge</string>
+     <string name="blueos_s_chibi_sit_d">Now and then a student sits down on a widget\'s top edge and swings her legs</string>
+     <string name="blueos_s_chibi_depth">How low she sits</string>
+-    <string name="blueos_s_chibi_depth_d">Lowered by <xliff:g id="pct" example="30">%d</xliff:g>%% of her height — the edge should be her seat</string>
++    <string name="blueos_s_chibi_depth_d">Now <xliff:g id="pct" example="30">%d</xliff:g>. At 30 she sits right on the widget\'s edge, less is a bit higher, more a bit lower</string>
+     <string name="blueos_s_chibi_pat">Patting</string>
+     <string name="blueos_s_chibi_pat_d">Move a finger left and right over her head: she leans her head into your hand and is happy</string>
+     <string name="blueos_s_chibi_acts">Café activities</string>
+-    <string name="blueos_s_chibi_acts_d">Now and then she sits down to a dessert, a keyboard or her studies — if her model has these animations</string>
++    <string name="blueos_s_chibi_acts_d">Now and then she plays her own instrument or stretches — if her model has these animations</string>
+     <string name="blueos_s_chibi_touch">Touching her</string>
+-    <string name="blueos_s_chibi_touch_d">A tap: she falls down and gets up again. Hold her: you pick her up, let go and she drops onto the nearest widget below. A gift from the Gifts widget: she reacts like in the café. Swipes past her still turn the pages</string>
++    <string name="blueos_s_chibi_touch_d">A tap: she falls down and gets up again. Hold her: you pick her up, let go and she drops onto the nearest widget below. Carry her to the screen\'s side to move to the next page. A gift from the Gifts widget: she reacts like in the café. Swipes past her still turn the pages</string>
++    <string name="blueos_s_h_chibi_sound">Sounds</string>
++    <string name="blueos_s_chibi_sound">Sounds</string>
++    <string name="blueos_s_chibi_sound_all">Sounds and voice</string>
++    <string name="blueos_s_chibi_sound_fx">Sounds only, no voice</string>
++    <string name="blueos_s_chibi_sound_off">Silent</string>
++    <string name="blueos_s_chibi_talk">Sometimes they talk on their own</string>
++    <string name="blueos_s_chibi_talk_d">Every few minutes one of them says something, like in the café</string>
++    <string name="blueos_s_chibi_sound_info">What you hear</string>
++    <string name="blueos_s_chibi_sound_info_d">The icons over their heads sound like in the game. Hopping, landing and picking her up have BlueOS\' own sounds. Her voice: if her lines were added in Character files. Silent while the phone is on silent or vibrate</string>
+     <string name="blueos_s_h_chibi_look">Look</string>
+     <string name="blueos_s_chibi_size">Size</string>
+     <string name="blueos_s_chibi_size_s">Small</string>
+diff --git a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+index 848392f0..b7a25fb1 100644
+--- a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
++++ b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+@@ -333,6 +333,7 @@ class BlueOSSettingsActivity : Activity() {
+             Item.Btn(R.string.blueos_s_chibi_files, R.string.blueos_s_chibi_files_d, dep = { true }) { openAssets() },
+             Item.Header(R.string.blueos_s_h_chibi_life),
+             Item.Sw(K.CHIBI_WALK, R.string.blueos_s_chibi_walk, R.string.blueos_s_chibi_walk_d, dep = shown),
++            Item.Sw(K.CHIBI_STAY, R.string.blueos_s_chibi_stay, R.string.blueos_s_chibi_stay_d, dep = shown),
+             Item.Sw(K.CHIBI_SIT, R.string.blueos_s_chibi_sit, R.string.blueos_s_chibi_sit_d, dep = shown),
+             Item.Slider(K.CHIBI_SIT_DEPTH, R.string.blueos_s_chibi_depth, sub = true, max = 60, dep = { shown() && on(K.CHIBI_SIT) }) { v ->
+                 getString(R.string.blueos_s_chibi_depth_d, v)
+@@ -340,6 +341,13 @@ class BlueOSSettingsActivity : Activity() {
+             Item.Sw(K.CHIBI_PAT, R.string.blueos_s_chibi_pat, R.string.blueos_s_chibi_pat_d, dep = shown),
+             Item.Sw(K.CHIBI_ACTS, R.string.blueos_s_chibi_acts, R.string.blueos_s_chibi_acts_d, dep = shown),
+             Item.Info(R.string.blueos_s_chibi_touch, R.string.blueos_s_chibi_touch_d),
++            Item.Header(R.string.blueos_s_h_chibi_sound),
++            Item.Choice(K.CHIBI_SOUND, R.string.blueos_s_chibi_sound, listOf(
++                R.string.blueos_s_chibi_sound_all to 2, R.string.blueos_s_chibi_sound_fx to 1,
++                R.string.blueos_s_chibi_sound_off to 0), dep = shown),
++            Item.Sw(K.CHIBI_TALK, R.string.blueos_s_chibi_talk, R.string.blueos_s_chibi_talk_d,
++                dep = { shown() && int(K.CHIBI_SOUND) == 2 }),
++            Item.Info(R.string.blueos_s_chibi_sound_info, R.string.blueos_s_chibi_sound_info_d),
+             Item.Header(R.string.blueos_s_h_chibi_look),
+             Item.Slider(K.CHIBI_SIZE, R.string.blueos_s_chibi_size, min = 80, max = 170, dep = shown) { v ->
+                 getString(when { v < 100 -> R.string.blueos_s_chibi_size_s; v < 135 -> R.string.blueos_s_chibi_size_m

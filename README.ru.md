@@ -9,10 +9,10 @@
 - живые виджеты;
 - «Цвета», где каждая деталь берёт цвет из обоев по своей роли;
 - живая погода и эквалайзер прямо на обоях;
-- живой персонаж на экране блокировки и в виджете: Арона или Плана (нужны свои файлы, см. ниже).
+- живой персонаж в виджете и на экране блокировки, интерактивное лобби и 3D-чиби на рабочем столе (нужны свои файлы персонажей).
 
-BlueOS разрабатывается на **Google Pixel 6a (`bluejay`)**. Готовые сборки есть ещё для **Pixel 6**, **Pixel 6 Pro**
-и **Galaxy S20 FE на Snapdragon**, их проверили тестеры. Под другие телефоны BlueOS можно собрать самому (для этого
+BlueOS разрабатывается на **Google Pixel 6a (`bluejay`)**. Готовые сборки есть ещё для **Pixel 6**, **Pixel 6 Pro**,
+**Galaxy S20 FE на Snapdragon** и **POCO X3 Pro**. Под другие телефоны BlueOS можно собрать самому (для этого
 исходники и выложены) или попробовать экспериментальный GSI ([GSI.ru.md](GSI.ru.md)).
 
 📣 **Новости и новые версии: Telegram-канал [t.me/BlueOSfirmware](https://t.me/BlueOSfirmware).**
@@ -48,11 +48,12 @@ BlueOS разрабатывается на **Google Pixel 6a (`bluejay`)**. Го
 ## С чего начать
 | Что нужно | Где |
 |---|---|
-| **Поставить готовую BlueOS на Pixel 6a** | **Releases** + [INSTALL.ru.md](INSTALL.ru.md) |
+| **Поставить готовую BlueOS на Pixel 6a** | [0.9.0](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0) + [инструкция](https://github.com/GDmio/BlueOS/releases/download/v0.9.0/INSTALL.ru.md) |
 | **Поставить на Pixel 6** | **Releases** (`v0.8.1-oriole`) + [INSTALL-Pixel6.ru.md](INSTALL-Pixel6.ru.md) |
 | **Поставить на Pixel 6 Pro** | **Releases** (`v0.8.1-raven`) + [INSTALL-Pixel6Pro.ru.md](INSTALL-Pixel6Pro.ru.md) |
-| **Поставить на Galaxy S20 FE (Snapdragon)** | **Releases** (`v0.8.1-r8q`) + [INSTALL-S20FE.ru.md](INSTALL-S20FE.ru.md) |
-| **Попробовать на другом телефоне** (GSI, экспериментально, проверен только на Pixel 6a) | **Releases** + [GSI.ru.md](GSI.ru.md) |
+| **Поставить на Galaxy S20 FE (Snapdragon)** | [0.9.0](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-r8q) + [инструкция](https://github.com/GDmio/BlueOS/releases/download/v0.9.0-r8q/INSTALL-S20FE.ru.md) |
+| **Поставить на POCO X3 Pro** | [0.9.0](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-vayu) + [инструкция](https://github.com/GDmio/BlueOS/releases/download/v0.9.0-vayu/INSTALL-POCOX3Pro.ru.md) |
+| **Попробовать на другом телефоне** (GSI, экспериментально, проверен только на Pixel 6a) | [0.9.0 GSI](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-gsi-treble) + [инструкция по GSI и DSU](https://github.com/GDmio/BlueOS/releases/download/v0.9.0-gsi-treble/GSI.ru.md) |
 | Собрать BlueOS под свой телефон | [BUILDING.ru.md](BUILDING.ru.md) |
 | Телефона нет в списке / что подстроить под другой экран | [PORTING.ru.md](PORTING.ru.md) |
 | Вернуть персонажа и звуки (на телефоне, без сборки) | [ASSETS.ru.md](ASSETS.ru.md) |

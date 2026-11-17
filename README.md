@@ -9,10 +9,10 @@ A fan-made Android ROM based on **LineageOS 24.0 (Android 17)** and inspired by 
 - live widgets;
 - «Colors», where every detail takes its colour from the wallpaper according to its role;
 - live weather and a music equalizer drawn right on the wallpaper;
-- a live character on the lock screen and in a widget: Arona or Plana (you need your own files, see below).
+- a live character on the lock screen and in a widget, an interactive lock-screen lobby, and 3D chibis on the home screen (add your own character files).
 
 BlueOS is developed on the **Google Pixel 6a (`bluejay`)**. Ready-made builds also exist for the **Pixel 6**,
-**Pixel 6 Pro** and **Galaxy S20 FE (Snapdragon)**, and testers have checked them. For other phones you can build
+**Pixel 6 Pro**, **Galaxy S20 FE (Snapdragon)** and **POCO X3 Pro**. For other phones you can build
 BlueOS yourself (that is why these sources are public) or try the experimental GSI ([GSI.md](GSI.md)).
 
 📣 **News and new versions: the Telegram channel [t.me/BlueOSfirmware](https://t.me/BlueOSfirmware).**
@@ -50,11 +50,12 @@ interface in Russian; BlueOS is in English too.</sub>
 ## Where to start
 | What you need | Where |
 |---|---|
-| **Install ready-made BlueOS on a Pixel 6a** | **Releases** + [INSTALL.md](INSTALL.md) |
+| **Install ready-made BlueOS on a Pixel 6a** | [0.9.0](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0) + [installation guide](https://github.com/GDmio/BlueOS/releases/download/v0.9.0/INSTALL.md) |
 | **Install on a Pixel 6** | **Releases** (`v0.8.1-oriole`) + [INSTALL-Pixel6.md](INSTALL-Pixel6.md) |
 | **Install on a Pixel 6 Pro** | **Releases** (`v0.8.1-raven`) + [INSTALL-Pixel6Pro.md](INSTALL-Pixel6Pro.md) |
-| **Install on a Galaxy S20 FE (Snapdragon)** | **Releases** (`v0.8.1-r8q`) + [INSTALL-S20FE.md](INSTALL-S20FE.md) |
-| **Try it on another phone** (GSI, experimental, checked only on a Pixel 6a) | **Releases** + [GSI.md](GSI.md) |
+| **Install on a Galaxy S20 FE (Snapdragon)** | [0.9.0](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-r8q) + [installation guide](https://github.com/GDmio/BlueOS/releases/download/v0.9.0-r8q/INSTALL-S20FE.md) |
+| **Install on a POCO X3 Pro** | [0.9.0](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-vayu) + [installation guide](https://github.com/GDmio/BlueOS/releases/download/v0.9.0-vayu/INSTALL-POCOX3Pro.md) |
+| **Try it on another phone** (GSI, experimental, checked only on a Pixel 6a) | [0.9.0 GSI](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-gsi-treble) + [GSI and DSU guide](https://github.com/GDmio/BlueOS/releases/download/v0.9.0-gsi-treble/GSI.md) |
 | Build BlueOS for your own phone | [BUILDING.md](BUILDING.md) |
 | Your phone isn't listed / what to adjust for another screen | [PORTING.md](PORTING.md) |
 | Bring back the character and sounds (on the phone, no build) | [ASSETS.md](ASSETS.md) |

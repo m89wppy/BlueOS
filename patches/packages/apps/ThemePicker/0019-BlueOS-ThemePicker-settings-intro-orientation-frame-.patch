@@ -1,0 +1,272 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 02:29:38 +0700
+Subject: [PATCH 19/23] =?UTF-8?q?BlueOS:=20ThemePicker:=20=C2=AB=D0=9B?=
+ =?UTF-8?q?=D0=BE=D0=B1=D0=B1=D0=B8=C2=BB=20settings=20=E2=80=94=20intro,?=
+ =?UTF-8?q?=20orientation,=20frame,=20sound?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I6709ca41e09382581a571bfd5158e06677d3bdf6
+---
+ res/values-ru/blueos_09_strings.xml           | 51 ++++++++++++
+ res/values/blueos_09_strings.xml              | 51 ++++++++++++
+ .../blueos/BlueOSSettingsActivity.kt          | 81 ++++++++++++++++++-
+ .../ThemePickerCustomizationOptionViewUtil.kt |  2 +
+ 4 files changed, 184 insertions(+), 1 deletion(-)
+
+diff --git a/res/values-ru/blueos_09_strings.xml b/res/values-ru/blueos_09_strings.xml
+index 9317d606..207bbf52 100644
+--- a/res/values-ru/blueos_09_strings.xml
++++ b/res/values-ru/blueos_09_strings.xml
+@@ -55,4 +55,55 @@
+     <string name="blueos_s_chibi_fps_60">Плавно — тратит больше батареи</string>
+     <string name="blueos_s_chibi_fps_30">Обычно</string>
+     <string name="blueos_s_chibi_fps_15">Экономно — чуть дёргано</string>
++    <!-- 0.9 «Лобби» -->
++    <string name="blueos_s_entry_lobby">Лобби</string>
++    <string name="blueos_s_entry_lobby_desc">Проведи вправо от левого края экрана блокировки: лобби из игры на весь экран, живое</string>
++    <string name="blueos_s_page_lobby">Лобби</string>
++    <string name="blueos_s_lobby_on">Экран «Лобби»</string>
++    <string name="blueos_s_lobby_on_d">Открывается, если провести вправо от левого края экрана блокировки</string>
++    <string name="blueos_s_lobby_which">Какое лобби</string>
++    <string name="blueos_s_lobby_none">Пока не добавлено</string>
++    <string name="blueos_s_lobby_preview">Посмотреть лобби</string>
++    <string name="blueos_s_lobby_preview_d">Открывает его на весь экран, как на экране блокировки. Кнопка «Назад» закрывает</string>
++    <string name="blueos_s_lobby_files">Файлы персонажа</string>
++    <string name="blueos_s_lobby_files_d">Добавь лобби вместе с остальными файлами: для каждого его .skel, .atlas и картинки .png</string>
++    <string name="blueos_s_lobby_intro">Приветствие при открытии</string>
++    <string name="blueos_s_lobby_intro_always">Каждый раз</string>
++    <string name="blueos_s_lobby_intro_hour">Если лобби не открывали больше часа</string>
++    <string name="blueos_s_lobby_intro_never">Никогда: она уже на месте</string>
++    <string name="blueos_s_h_lobby_over">Что видно поверх лобби</string>
++    <string name="blueos_s_lobby_clock">Часы</string>
++    <string name="blueos_s_lobby_clock_none">Ничего</string>
++    <string name="blueos_s_lobby_clock_time">Время</string>
++    <string name="blueos_s_lobby_clock_date">Время и дата</string>
++    <string name="blueos_s_lobby_fp">Значок отпечатка</string>
++    <string name="blueos_s_lobby_fp_d">Датчик работает и без значка: палец можно приложить в любой момент</string>
++    <string name="blueos_s_lobby_autohide">Прятать, пока не трогаю</string>
++    <string name="blueos_s_lobby_autohide_d">Часы и значок исчезают через 3 секунды и возвращаются при касании</string>
++    <string name="blueos_s_h_lobby_frame">Кадр</string>
++    <string name="blueos_s_lobby_orient">Как держать телефон</string>
++    <string name="blueos_s_lobby_orient_land">Горизонтально — вся комната, как в игре</string>
++    <string name="blueos_s_lobby_orient_auto">Как держу</string>
++    <string name="blueos_s_lobby_orient_port">Вертикально — часть комнаты вокруг неё</string>
++    <string name="blueos_s_lobby_zoom">Приблизить</string>
++    <string name="blueos_s_lobby_zoom_d">Сколько сцены видно на экране: 100 %% — как можно больше. <xliff:g id="pct" example="100">%1$d</xliff:g> %%</string>
++    <string name="blueos_s_lobby_pan">Сдвиг влево и вправо</string>
++    <string name="blueos_s_lobby_pan_left">Больше левой части сцены</string>
++    <string name="blueos_s_lobby_pan_mid">Она в середине</string>
++    <string name="blueos_s_lobby_pan_right">Больше правой части сцены</string>
++    <string name="blueos_s_lobby_tilt">Осматриваться наклоном</string>
++    <string name="blueos_s_lobby_tilt_d">Наклоняешь телефон — кадр немного сдвигается, как будто заглядываешь в комнату</string>
++    <string name="blueos_s_h_lobby_sound">Звук</string>
++    <string name="blueos_s_lobby_sound">Звук в лобби</string>
++    <string name="blueos_s_lobby_sound_off">Выключен</string>
++    <string name="blueos_s_lobby_sound_voice">Голос</string>
++    <string name="blueos_s_lobby_sound_music">Голос и музыка</string>
++    <string name="blueos_s_lobby_sound_info">Только со включённым звуком</string>
++    <string name="blueos_s_lobby_sound_info_d">В беззвучном режиме и с вибрацией лобби молчит</string>
++    <string name="blueos_s_h_lobby_more">Жесты и плавность</string>
++    <string name="blueos_s_lobby_gestures">Где работают жесты</string>
++    <string name="blueos_s_lobby_gestures_d">Края считаются по телефону, поставленному вертикально: правый край — назад на экран блокировки, верх — шторка, снизу вверх — разблокировать. Всё остальное место — её: нажать, подержать палец, погладить по голове</string>
++    <string name="blueos_s_lobby_fps">Плавность</string>
++    <string name="blueos_s_lobby_fps_60">Плавно — больше расход батареи</string>
++    <string name="blueos_s_lobby_fps_30">Обычно</string>
+ </resources>
+diff --git a/res/values/blueos_09_strings.xml b/res/values/blueos_09_strings.xml
+index db421da5..53d2a3b7 100644
+--- a/res/values/blueos_09_strings.xml
++++ b/res/values/blueos_09_strings.xml
+@@ -56,4 +56,55 @@
+     <string name="blueos_s_chibi_fps_60">Smooth — uses more battery</string>
+     <string name="blueos_s_chibi_fps_30">Normal</string>
+     <string name="blueos_s_chibi_fps_15">Battery saving — a little jerky</string>
++    <!-- 0.9 «Лобби» -->
++    <string name="blueos_s_entry_lobby">Lobby</string>
++    <string name="blueos_s_entry_lobby_desc">Swipe right from the left edge of the lock screen: a lobby from the game, full screen, alive</string>
++    <string name="blueos_s_page_lobby">Lobby</string>
++    <string name="blueos_s_lobby_on">Lobby screen</string>
++    <string name="blueos_s_lobby_on_d">Opens when you swipe right from the left edge of the lock screen</string>
++    <string name="blueos_s_lobby_which">Which lobby</string>
++    <string name="blueos_s_lobby_none">None added yet</string>
++    <string name="blueos_s_lobby_preview">Look at the lobby</string>
++    <string name="blueos_s_lobby_preview_d">Opens it full screen, the way it looks on the lock screen. Back closes it</string>
++    <string name="blueos_s_lobby_files">Character files</string>
++    <string name="blueos_s_lobby_files_d">Add lobbies together with the other files: for each one its .skel, .atlas and .png pictures</string>
++    <string name="blueos_s_lobby_intro">Greeting when the lobby opens</string>
++    <string name="blueos_s_lobby_intro_always">Every time</string>
++    <string name="blueos_s_lobby_intro_hour">If you haven\'t opened it for an hour</string>
++    <string name="blueos_s_lobby_intro_never">Never: she is already there</string>
++    <string name="blueos_s_h_lobby_over">What is shown over the lobby</string>
++    <string name="blueos_s_lobby_clock">Clock</string>
++    <string name="blueos_s_lobby_clock_none">Nothing</string>
++    <string name="blueos_s_lobby_clock_time">Time</string>
++    <string name="blueos_s_lobby_clock_date">Time and date</string>
++    <string name="blueos_s_lobby_fp">Fingerprint icon</string>
++    <string name="blueos_s_lobby_fp_d">The sensor works without the icon too: you can put your finger on it at any moment</string>
++    <string name="blueos_s_lobby_autohide">Hide while I don\'t touch</string>
++    <string name="blueos_s_lobby_autohide_d">The clock and the icon disappear after 3 seconds and come back when you touch the screen</string>
++    <string name="blueos_s_h_lobby_frame">Frame</string>
++    <string name="blueos_s_lobby_orient">How to hold the phone</string>
++    <string name="blueos_s_lobby_orient_land">Sideways — the whole room, as in the game</string>
++    <string name="blueos_s_lobby_orient_auto">The way I hold it</string>
++    <string name="blueos_s_lobby_orient_port">Upright — a part of the room around her</string>
++    <string name="blueos_s_lobby_zoom">Zoom in</string>
++    <string name="blueos_s_lobby_zoom_d">The scene in the game is landscape, the phone shows a part of it. <xliff:g id="pct" example="100">%1$d</xliff:g> %%</string>
++    <string name="blueos_s_lobby_pan">Shift left and right</string>
++    <string name="blueos_s_lobby_pan_left">More of the left part of the scene</string>
++    <string name="blueos_s_lobby_pan_mid">She is in the middle</string>
++    <string name="blueos_s_lobby_pan_right">More of the right part of the scene</string>
++    <string name="blueos_s_lobby_tilt">Look around by tilting</string>
++    <string name="blueos_s_lobby_tilt_d">Tilt the phone and the frame moves a little, as if you were peeking into the room</string>
++    <string name="blueos_s_h_lobby_sound">Sound</string>
++    <string name="blueos_s_lobby_sound">Sound in the lobby</string>
++    <string name="blueos_s_lobby_sound_off">Off</string>
++    <string name="blueos_s_lobby_sound_voice">Voice</string>
++    <string name="blueos_s_lobby_sound_music">Voice and music</string>
++    <string name="blueos_s_lobby_sound_info">Only with the sound on</string>
++    <string name="blueos_s_lobby_sound_info_d">In silent and vibrate mode the lobby stays quiet</string>
++    <string name="blueos_s_h_lobby_more">Gestures and smoothness</string>
++    <string name="blueos_s_lobby_gestures">Where the gestures work</string>
++    <string name="blueos_s_lobby_gestures_d">The edges are the upright phone\'s: right edge — back to the lock screen, top — notifications, swipe up from the bottom — unlock. Everywhere else is hers: tap, hold, stroke her head</string>
++    <string name="blueos_s_lobby_fps">Smoothness</string>
++    <string name="blueos_s_lobby_fps_60">Smooth — uses more battery</string>
++    <string name="blueos_s_lobby_fps_30">Normal</string>
+ </resources>
+diff --git a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+index b7c930ed..0d9f178d 100644
+--- a/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
++++ b/src/com/android/customization/blueos/BlueOSSettingsActivity.kt
+@@ -29,6 +29,7 @@ enum class BlueOSCustomizationOption(val page: String, val title: Int, val desc:
+     MOTION(BlueOSSettingsActivity.MOTION, R.string.blueos_s_entry_motion, R.string.blueos_s_entry_motion_desc),
+     WEATHER(BlueOSSettingsActivity.WEATHER, R.string.blueos_s_entry_weather, R.string.blueos_s_entry_weather_desc),
+     CHIBI(BlueOSSettingsActivity.CHIBI, R.string.blueos_s_entry_chibi, R.string.blueos_s_entry_chibi_desc),
++    LOBBY(BlueOSSettingsActivity.LOBBY, R.string.blueos_s_entry_lobby, R.string.blueos_s_entry_lobby_desc),
+     COLORS(BlueOSSettingsActivity.COLORS, R.string.blueos_s_entry_colors, R.string.blueos_s_entry_colors_desc);
+ 
+     /** A list entry styled like the stock ones ("More lock screen settings" layout). */
+@@ -59,6 +60,7 @@ class BlueOSSettingsActivity : Activity() {
+         const val WEATHER = "weather"
+         const val COLORS = "colors"
+         const val CHIBI = "chibi"
++        const val LOBBY = "lobby"
+ 
+         fun open(context: Context, page: String) =
+             context.startActivity(Intent(context, BlueOSSettingsActivity::class.java).putExtra(EXTRA_PAGE, page))
+@@ -367,6 +369,82 @@ class BlueOSSettingsActivity : Activity() {
+         )
+     }
+ 
++    /** 0.9 «Лобби»: a memorial lobby from the user's files, one swipe right of the lock screen (SystemUI). */
++    private fun lobbyPage(): List<Item> {
++        val shown = { on(K.LOBBY_ON) }
++        val any = { org.blueos.arona.BlueOSLobbies.list().isNotEmpty() }
++        return listOf(
++            Item.Sw(K.LOBBY_ON, R.string.blueos_s_lobby_on, R.string.blueos_s_lobby_on_d),
++            Item.Value(R.string.blueos_s_lobby_which, {
++                org.blueos.arona.BlueOSLobbies.chosen(this)?.title ?: getString(R.string.blueos_s_lobby_none)
++            }) { pickLobby() },
++            Item.Btn(R.string.blueos_s_lobby_preview, R.string.blueos_s_lobby_preview_d, dep = any) { previewLobby() },
++            Item.Btn(R.string.blueos_s_lobby_files, R.string.blueos_s_lobby_files_d, dep = { true }) { openAssets() },
++            Item.Choice(K.LOBBY_INTRO, R.string.blueos_s_lobby_intro, listOf(
++                R.string.blueos_s_lobby_intro_always to 0, R.string.blueos_s_lobby_intro_hour to 1,
++                R.string.blueos_s_lobby_intro_never to 2), dep = shown),
++            Item.Header(R.string.blueos_s_h_lobby_over),
++            Item.Choice(K.LOBBY_CLOCK, R.string.blueos_s_lobby_clock, listOf(
++                R.string.blueos_s_lobby_clock_none to 0, R.string.blueos_s_lobby_clock_time to 1,
++                R.string.blueos_s_lobby_clock_date to 2), dep = shown),
++            Item.Sw(K.LOBBY_FP, R.string.blueos_s_lobby_fp, R.string.blueos_s_lobby_fp_d, dep = shown),
++            Item.Sw(K.LOBBY_AUTOHIDE, R.string.blueos_s_lobby_autohide, R.string.blueos_s_lobby_autohide_d, dep = shown),
++            Item.Header(R.string.blueos_s_h_lobby_frame),
++            Item.Choice(K.LOBBY_ORIENT, R.string.blueos_s_lobby_orient, listOf(
++                R.string.blueos_s_lobby_orient_land to 0, R.string.blueos_s_lobby_orient_auto to 1,
++                R.string.blueos_s_lobby_orient_port to 2), dep = shown),
++            Item.Slider(K.LOBBY_ZOOM, R.string.blueos_s_lobby_zoom, min = 100, max = 180, dep = shown) { v ->
++                getString(R.string.blueos_s_lobby_zoom_d, v)
++            },
++            Item.Slider(K.LOBBY_PAN, R.string.blueos_s_lobby_pan, min = -100, max = 100, dep = shown) { v ->
++                getString(when { v < -10 -> R.string.blueos_s_lobby_pan_left; v > 10 -> R.string.blueos_s_lobby_pan_right
++                                 else -> R.string.blueos_s_lobby_pan_mid })
++            },
++            Item.Sw(K.LOBBY_TILT, R.string.blueos_s_lobby_tilt, R.string.blueos_s_lobby_tilt_d, dep = shown),
++            Item.Header(R.string.blueos_s_h_lobby_sound),
++            Item.Choice(K.LOBBY_SOUND, R.string.blueos_s_lobby_sound, listOf(
++                R.string.blueos_s_lobby_sound_off to 0, R.string.blueos_s_lobby_sound_voice to 1,
++                R.string.blueos_s_lobby_sound_music to 2), dep = shown),
++            Item.Info(R.string.blueos_s_lobby_sound_info, R.string.blueos_s_lobby_sound_info_d),
++            Item.Header(R.string.blueos_s_h_lobby_more),
++            Item.Info(R.string.blueos_s_lobby_gestures, R.string.blueos_s_lobby_gestures_d),
++            Item.Choice(K.LOBBY_FPS, R.string.blueos_s_lobby_fps, listOf(
++                R.string.blueos_s_lobby_fps_60 to 60, R.string.blueos_s_lobby_fps_30 to 30), dep = shown),
++        )
++    }
++
++    private fun pickLobby() {
++        val all = org.blueos.arona.BlueOSLobbies.list()
++        if (all.isEmpty()) { openAssets(); return }
++        val cur = org.blueos.arona.BlueOSLobbies.chosen(this)?.name
++        AlertDialog.Builder(this)
++            .setTitle(R.string.blueos_s_lobby_which)
++            .setSingleChoiceItems(all.map { it.title }.toTypedArray(), all.indexOfFirst { it.name == cur }) { d, which ->
++                put(K.LOBBY, all[which].name); d.dismiss()
++            }
++            .setNegativeButton(android.R.string.cancel, null)
++            .show()
++    }
++
++    /** The chosen lobby full screen, as on the lock screen (also how its speed is measured: BlueOSLobby debug log). */
++    private fun previewLobby() {
++        val lobby = org.blueos.arona.BlueOSLobbies.chosen(this) ?: return
++        val view = org.blueos.arona.BlueOSLobbyView(this)
++        val dialog = android.app.Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
++        dialog.setContentView(view)
++        dialog.window?.let { w ->
++            w.setDecorFitsSystemWindows(false)
++            w.attributes = w.attributes.apply {
++                layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
++            }
++            w.statusBarColor = android.graphics.Color.TRANSPARENT
++            w.navigationBarColor = android.graphics.Color.TRANSPARENT
++        }
++        dialog.setOnDismissListener { org.blueos.arona.BlueOSLobbies.release() }
++        view.show(lobby)
++        dialog.show()
++    }
++
+     private fun shownChibis() = org.blueos.arona.BlueOSMedia.chibisShown(Settings.Secure.getString(contentResolver, K.CHIBI_SHOWN))
+         .map { it.name.dropLast(4) }
+ 
+@@ -697,6 +775,7 @@ class BlueOSSettingsActivity : Activity() {
+                 HOME -> R.string.blueos_s_page_home; WEATHER -> R.string.blueos_s_page_weather
+                 CLOCK -> R.string.blueos_s_page_clock; MOTION -> R.string.blueos_s_page_motion
+                 COLORS -> R.string.blueos_s_page_colors; CHIBI -> R.string.blueos_s_page_chibi
++                LOBBY -> R.string.blueos_s_page_lobby
+                 else -> R.string.blueos_s_page_arona
+             })
+             setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
+@@ -713,7 +792,7 @@ class BlueOSSettingsActivity : Activity() {
+         setContentView(root)
+         val items = when (page) {
+             HOME -> homePage(); WEATHER -> weatherPage(); CLOCK -> clockPage(); MOTION -> motionPage()
+-            COLORS -> colorsPage(); CHIBI -> chibiPage()
++            COLORS -> colorsPage(); CHIBI -> chibiPage(); LOBBY -> lobbyPage()
+             else -> aronaPage()
+         }
+         // rows between two section titles form one group: rounded at its ends, 2 dp apart (SettingsLib expressive)
+diff --git a/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt b/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
+index 8b663b49..6e3b08c3 100644
+--- a/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
++++ b/src/com/android/wallpaper/customization/ui/util/ThemePickerCustomizationOptionViewUtil.kt
+@@ -127,6 +127,8 @@ constructor(
+                     // always there — without the game's files it tells how to add them
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.ARONA.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.CLOCK.entry(layoutInflater, optionContainer))
++                    // 0.9 «Лобби»: the screen one swipe right of the lock screen
++                    add(com.android.customization.blueos.BlueOSCustomizationOption.LOBBY.entry(layoutInflater, optionContainer))
+                     // 0.8: «Цвета» — a role per element (clock, halo, AOD, icons)
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.COLORS.entry(layoutInflater, optionContainer))
+                     add(com.android.customization.blueos.BlueOSCustomizationOption.MOTION.entry(layoutInflater, optionContainer))

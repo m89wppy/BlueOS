@@ -1,0 +1,464 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Mon, 9 Nov 2026 09:29:08 +0700
+Subject: [PATCH 15/23] =?UTF-8?q?BlueOS:=20Launcher3:=20chibis=20=E2=80=94?=
+ =?UTF-8?q?=20own=20acts,=20words=20in=20a=20bubble,=20shy=20tap,=20shake?=
+ =?UTF-8?q?=20and=20drop?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- acts: her gesture (Public), victory pose, callsign, EX skill, the band's
+  instruments — something of her own for nearly every model
+- her words over her head while a line plays (lines.json from the wiki,
+  ru/en/ja, blueos_chibi_lang); the bubble follows her or stays put
+  (blueos_bubble_follow)
+- the emotes and words in a sub-window over the SurfaceView (were hidden)
+- a tap makes her shy (café reaction, blush); a dropped phone makes her fall;
+  shaking makes her dizzy and throws them around the screen (blueos_chibi_toss)
+- only the chosen chibis load (blueos_chibi_shown: first 3 until picked, max 5)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Id43ecccd0ee2f84389501130515d825d3ccb492f
+---
+ .../android/launcher3/blueos/BlueOSChibiFx.kt |  67 ++++++-
+ .../launcher3/blueos/BlueOSChibiLayer.kt      | 169 ++++++++++++++++--
+ 2 files changed, 217 insertions(+), 19 deletions(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSChibiFx.kt b/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
+index 4a61c49a90..8cdc135370 100644
+--- a/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
++++ b/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
+@@ -8,12 +8,14 @@ import android.graphics.Path
+ import android.graphics.RectF
+ import android.os.SystemClock
+ import android.view.View
++import kotlin.math.max
+ import kotlin.math.min
+ 
+ /**
+  * BlueOS 0.9: what is drawn over the chibis (BlueOSChibiLayer): the emotes over a head (heart, note, «!», a drop), the
+- * hand under the finger while patting, the gift being dragged from the «Подарки» widget. Our own simple drawings in dp.
+- * Never touchable; draws only while something is on it.
++ * hand under the finger while patting, the gift being dragged from the «Подарки» widget, her words while she speaks.
++ * Our own simple drawings in dp. Lives in its own sub-window over the chibis' SurfaceView; never touchable; draws only
++ * while something is on it.
+  */
+ class BlueOSChibiFx(context: Context) : View(context) {
+ 
+@@ -37,12 +39,60 @@ class BlueOSChibiFx(context: Context) : View(context) {
+     fun emote(kind: Int, pos: () -> Pair<Float, Float>) { emotes += Emote(kind, SystemClock.uptimeMillis(), pos); invalidate() }
+     fun hand(x: Float, y: Float) { handX = x; handY = y; invalidate() }
+     fun ghost(kind: Int, x: Float, y: Float) { ghostKind = kind; ghostX = x; ghostY = y; invalidate() }
+-    fun clearAll() { emotes.clear(); handX = -1f; ghostKind = -1; invalidate() }
++    fun clearAll() { emotes.clear(); speech.clear(); handX = -1f; ghostKind = -1; invalidate() }
++
++    // ---- her words: a bubble over her head while the line plays (the user, 0.9)
++    private class Speech(val layout: android.text.StaticLayout, val at: Long, val until: Long, val pos: () -> Pair<Float, Float>)
++    private val speech = ArrayList<Speech>()
++    private val words = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
++        textSize = 13 * context.resources.displayMetrics.scaledDensity
++        typeface = android.graphics.Typeface.create("google-sans-text", android.graphics.Typeface.NORMAL)
++    }
++    private val bubble = Paint(Paint.ANTI_ALIAS_FLAG)
++    private val box = RectF()
++    fun speak(text: String, pos: () -> Pair<Float, Float>) {
++        val dark = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
++            android.content.res.Configuration.UI_MODE_NIGHT_YES
++        // roles of the current palette (no baked colours): a raised surface card, its text
++        bubble.color = context.getColor(if (dark) android.R.color.system_surface_container_high_dark else android.R.color.system_surface_container_high_light)
++        words.color = context.getColor(if (dark) android.R.color.system_on_surface_dark else android.R.color.system_on_surface_light)
++        val w = (min(200 * dp, words.measureText(text) + 1)).toInt().coerceAtLeast(1)
++        val layout = android.text.StaticLayout.Builder.obtain(text, 0, text.length, words, w)
++            .setMaxLines(4).setEllipsize(android.text.TextUtils.TruncateAt.END).build()
++        val now = SystemClock.uptimeMillis()
++        speech.removeAll { it.pos === pos }
++        speech += Speech(layout, now, now + (1800 + 65L * text.length).coerceAtMost(9000), pos)
++        invalidate()
++    }
++
++    private fun drawSpeech(c: Canvas, s: Speech, now: Long) {
++        val (hx, hy) = s.pos()
++        val a = min(min(1f, (now - s.at) / 180f), ((s.until - now) / 250f).coerceIn(0f, 1f))
++        if (a <= 0f) return
++        val pad = 10 * dp; val tail = 7 * dp
++        val bw = s.layout.width + 2 * pad; val bh = s.layout.height + 1.4f * pad
++        val ax = hx * dp; val ay = hy * dp                                            // the tail's tip
++        val left = (ax - bw / 2).coerceIn(8 * dp, max(8 * dp, width - bw - 8 * dp))
++        val top = ay - tail - bh
++        val al = (a * 255).toInt()
++        bubble.alpha = al
++        bubble.setShadowLayer(4 * dp, 0f, 1 * dp, Color.argb((al * .30f).toInt(), 0, 0, 0))
++        box.set(left, top, left + bw, top + bh)
++        c.drawRoundRect(box, 14 * dp, 14 * dp, bubble)
++        bubble.clearShadowLayer()
++        path.reset()
++        val tx = ax.coerceIn(left + 16 * dp, left + bw - 16 * dp)
++        path.moveTo(tx - tail, top + bh - 1); path.lineTo(tx + tail, top + bh - 1); path.lineTo(tx, top + bh + tail); path.close()
++        c.drawPath(path, bubble)
++        words.alpha = al
++        c.save(); c.translate(left + pad, top + .7f * pad); s.layout.draw(c); c.restore()
++    }
+ 
+     /** Each drawn frame of the layer: emotes follow the heads. */
+     fun step(now: Long) {
+         emotes.removeAll { now - it.at > LIFE }
+-        if (emotes.isNotEmpty() || handX >= 0 || ghostKind >= 0) invalidate()
++        speech.removeAll { now > it.until }
++        if (emotes.isNotEmpty() || speech.isNotEmpty() || handX >= 0 || ghostKind >= 0) invalidate()
+     }
+ 
+     override fun onDraw(c: Canvas) {
+@@ -54,6 +104,7 @@ class BlueOSChibiFx(context: Context) : View(context) {
+             val a = if (now - e.at > LIFE - 300) ((LIFE - (now - e.at)) / 300f).coerceIn(0f, 1f) else 1f
+             drawEmote(c, e.kind, (x + 18) * dp, (y - 18) * dp, s, a)
+         }
++        for (s in speech) drawSpeech(c, s, now)
+         if (handX >= 0) drawHand(c, handX * dp, (handY - 10) * dp, 24 * dp)
+         if (ghostKind >= 0) {
+             c.save(); c.translate(0f, 0f)
+@@ -88,6 +139,14 @@ class BlueOSChibiFx(context: Context) : View(context) {
+                 path.moveTo(cx - 2.4f * u, cy - 9 * u); path.lineTo(cx + 9.4f * u, cy - 12 * u)
+                 path.lineTo(cx + 9.4f * u, cy - 9 * u); path.lineTo(cx - 2.4f * u, cy - 6 * u); path.close()
+             }
++            4 -> {                                                                      // blushing: «///» on pink
++                fill.color = 0xFFFF8FB1.toInt()
++                oval.set(cx - 12 * u, cy - 6 * u, cx + 12 * u, cy + 6 * u)
++                path.addOval(oval, Path.Direction.CW)
++                fill.alpha = (al * .55f).toInt(); c.drawPath(path, fill); path.reset()
++                line.color = 0xFFE0457B.toInt(); line.alpha = al; line.strokeWidth = 2.2f * u
++                for (k in -1..1) c.drawLine(cx + k * 6 * u - 2 * u, cy + 4 * u, cx + k * 6 * u + 2 * u, cy - 4 * u, line)
++            }
+             2 -> {                                                                      // «!»
+                 fill.color = 0xFFFF9F1C.toInt()
+                 oval.set(cx - 2.5f * u, cy - 12 * u, cx + 2.5f * u, cy + 4 * u)
+diff --git a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+index 81aa7e8190..2e91d42832 100644
+--- a/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
++++ b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
+@@ -80,7 +80,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+     private val texture = android.view.SurfaceView(context).apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
+     // Before init { }: the first reload() there calls release() → sound.stop() when there are no chibis (0.9 test:
+     // a property declared further down is still null in the constructor, the launcher crashed at every start).
+-    private val sound by lazy { Sound() }
++    private val sound by lazy { Sound().also { s -> s.onWords = { model, text -> main.post { speak(model, text) } } } }
+     private val fx = BlueOSChibiFx(context)
+     private var gl: Gl? = null
+     private val chibis = ArrayList<Chibi>()
+@@ -119,6 +119,10 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+     private var noSurfaceLogged = false
+     private var talk = true
+     private var nextTalk = 0L
++    private var lang = "ru"
++    private var toss = true
++    private var follow = true
++    private var motionOff: (() -> Unit)? = null
+ 
+     init {
+         // under everything that floats (folders, popups, drags): right after the hotseat, like the workspace's things
+@@ -128,7 +132,14 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         fun full() = com.android.launcher3.views.BaseDragLayer.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+             ViewGroup.LayoutParams.MATCH_PARENT).apply { ignoreInsets = true }
+         dragLayer.addView(texture, at, full())
+-        dragLayer.addView(fx, at + 1, full())
++        // The emotes and her words: in a sub-window of the launcher's window. The chibis' SurfaceView is drawn over
++        // the whole window (setZOrderOnTop), so a view inside it was hidden behind her (the user: the bubble is
++        // covered). TYPE_APPLICATION_SUB_PANEL is layered over the window's own surfaces; it takes no touches.
++        if (dragLayer.isAttachedToWindow) addFx()
++        dragLayer.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
++            override fun onViewAttachedToWindow(v: View) = addFx()
++            override fun onViewDetachedFromWindow(v: View) = removeFx()
++        })
+         texture.alpha = 0f
+         readSettings()
+         K.observe(context, K.CHIBI_KEYS) { readSettings(); reload() }
+@@ -137,6 +148,31 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         reload()
+     }
+ 
++    private var fxAdded = false
++    private fun addFx() {
++        if (fxAdded) return
++        val token = dragLayer.windowToken ?: return
++        val lp = android.view.WindowManager.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
++            android.view.WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL,
++            android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
++                android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
++            android.graphics.PixelFormat.TRANSLUCENT).apply {
++            this.token = token
++            title = "BlueOSChibiFx"
++            layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
++            fitInsetsTypes = 0
++            gravity = android.view.Gravity.TOP or android.view.Gravity.START
++        }
++        try {
++            context.getSystemService(android.view.WindowManager::class.java).addView(fx, lp); fxAdded = true
++        } catch (e: Exception) { Log.w(TAG, "no window for the emotes", e) }
++    }
++    private fun removeFx() {
++        if (!fxAdded) return
++        fxAdded = false
++        try { context.getSystemService(android.view.WindowManager::class.java).removeViewImmediate(fx) } catch (_: Exception) {}
++    }
++
+     private fun readSettings() {
+         on = K.on(cr, K.CHIBI_ON); walk = K.on(cr, K.CHIBI_WALK); sit = K.on(cr, K.CHIBI_SIT)
+         pat = K.on(cr, K.CHIBI_PAT); acts = K.on(cr, K.CHIBI_ACTS)
+@@ -147,6 +183,9 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         soundMode = K.int(cr, K.CHIBI_SOUND).coerceIn(0, 2)
+         talk = K.on(cr, K.CHIBI_TALK)
+         stay = K.on(cr, K.CHIBI_STAY)
++        lang = K.string(cr, K.CHIBI_LANG, "ru")
++        toss = K.on(cr, K.CHIBI_TOSS)
++        follow = K.on(cr, K.BUBBLE_FOLLOW)
+         chibis.forEach { it.fit(sizeDp) }
+     }
+ 
+@@ -154,8 +193,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+ 
+     /** Loads what the folder has now (only if it or the light changed); nothing at all when off or no files. */
+     private fun reload() {
+-        val hidden = K.string(cr, K.CHIBI_HIDDEN, "").split(';').filter { it.isNotBlank() }.toSet()
+-        val files = if (on) BlueOSMedia.chibis(hidden) else emptyList()
++        val files = if (on) BlueOSMedia.chibisShown(android.provider.Settings.Secure.getString(cr, K.CHIBI_SHOWN)) else emptyList()
+         val sig = files.joinToString("|") { "${it.name}:${it.length()}:${it.lastModified()}" } + "|lit=$lit"
+         if (sig == loadedSig) return
+         loadedSig = sig
+@@ -187,6 +225,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+ 
+     private fun release() {
+         running = false
++        motionOff?.invoke(); motionOff = null
+         sound.stop()
+         gl?.destroy(); gl = null
+         texture.alpha = 0f; shown = 0f
+@@ -209,6 +248,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 if (shown > 0f) { Choreographer.getInstance().postFrameCallback(this); return }
+                 fx.visibility = View.INVISIBLE
+                 running = false
++                motionOff?.invoke(); motionOff = null
+                 main.postDelayed({ wake() }, 300)
+                 return
+             }
+@@ -292,6 +332,8 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+     private fun wake() {
+         if (running || chibis.isEmpty()) return
+         running = true
++        // the phone's motion: shaking throws them, a drop makes them fall (sensors only while they are drawn)
++        if (motionOff == null) motionOff = org.blueos.arona.BlueOSMotion.acquire(context, motion)
+         lastFrame = SystemClock.uptimeMillis(); fadeAt = lastFrame
+         // the same callback may still be waiting from before (off and on again within a frame): posted twice, every
+         // frame ran twice — twice the work and twice the speed (0.9 test: 61 % of a core instead of 35 %)
+@@ -363,6 +405,11 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         }
+     }
+ 
++    private val motion = object : org.blueos.arona.BlueOSMotion.Listener {
++        override fun onShake() { chibis.filter { it.onScreen }.forEach { it.shaken() }; wake() }
++        override fun onFall() { chibis.filter { it.onScreen }.forEach { it.dropped() }; wake() }
++    }
++
+     private fun landing(x: Float, y: Float): Plat =
+         plats.filter { x >= it.l + 4 && x <= it.r - 4 && it.top >= y - 6 && (it.ground || it.r > 0 && it.l < screenW) }
+             .minByOrNull { it.top } ?: ground
+@@ -630,13 +677,39 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         fun drag(px: Float, py: Float) { dragX = px; dragY = py }
+         fun letGo() { fallFrom(x, y) }
+ 
++        /** A tap: she gets shy (the café's reaction, blushing, one of her lobby lines). The user: not falling over. */
+         fun tapped() {
+-            if (state == HELD || state == TAP) return
+-            if (m.tap < 0) { gifted(Fx.NOTE); return }
++            if (state == HELD || state == TAP || state == THROWN) return
++            state = REACT; start = SystemClock.uptimeMillis(); face = 0f
++            play(if (m.react >= 0) m.react else m.idle, m.react < 0); fx.emote(index, Fx.BLUSH); wake()
++            sound.say(m.name, "Lobby")
++        }
++
++        /** The phone fell: she falls over (Vital_Death) and gets up again. */
++        fun dropped() {
++            if (state == HELD) return
++            if (state in FLYING) { y = plat.top }
++            if (m.tap < 0) { fx.emote(index, Fx.WOW); return }
+             state = TAP; start = SystemClock.uptimeMillis(); face = 0f; play(m.tap, false); fx.emote(index, Fx.WOW); wake()
+             sound.say(m.name, "Battle_Damage")
+         }
+ 
++        /** The phone was shaken: dizzy (her panic clip while she flies, a drop over her head, a cry). */
++        fun shaken() {
++            if (state == HELD) return
++            fx.emote(index, Fx.SWEAT)
++            sound.say(m.name, "Battle_Damage")
++            if (state != THROWN && state != TAP) { state = REACT; start = SystemClock.uptimeMillis(); face = 0f; play(m.panic, false) }
++        }
++
++        private var tvx = 0f; private var tvy = 0f
++        /** Shaking throws her off her feet (setting «Кидает при тряске»). */
++        private fun throwBy(ax: Float, ay: Float) {
++            state = THROWN; start = SystemClock.uptimeMillis(); face = 0f
++            tvx = -ax * TOSS_V; tvy = ay * TOSS_V - 260f
++            play(m.panic, true); wake()
++        }
++
+         fun gifted(emo: Int = Fx.HEART) {
+             if (state == HELD) return
+             state = REACT; start = SystemClock.uptimeMillis(); face = 0f; play(if (m.react >= 0) m.react else m.idle, m.react < 0); fx.emote(index, emo); wake()
+@@ -670,7 +743,34 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         }
+ 
+         fun update(dt: Float, now: Long) {
++            if (toss && onScreen && state != HELD && state != THROWN && !patOn && !pinned) {
++                val ax = org.blueos.arona.BlueOSMotion.linX; val ay = org.blueos.arona.BlueOSMotion.linY
++                if (hypot(ax, ay) > TOSS_G) throwBy(ax, ay)
++            }
+             when (state) {
++                THROWN -> {
++                    // flying: the phone's motion pushes her (it moves right → she lags left), gravity pulls, the
++                    // screen's sides and top bounce her back; she lands on the first edge under her
++                    val ax = org.blueos.arona.BlueOSMotion.linX; val ay = org.blueos.arona.BlueOSMotion.linY
++                    tvx += -ax * TOSS_A * dt
++                    tvy += (ay * TOSS_A + 2600f) * dt
++                    val py = y
++                    x += tvx * dt; y += tvy * dt
++                    val side = w * .45f
++                    if (x < side) { x = side; tvx = abs(tvx) * .55f }
++                    if (x > screenW - side) { x = screenW - side; tvx = -abs(tvx) * .55f }
++                    if (y - h < 30f) { y = 30f + h; tvy = abs(tvy) * .4f }
++                    face = if (abs(tvx) > 40f) sign(tvx) * HALF_PI else 0f
++                    if (tvy > 0f) {
++                        val p = landing(x, py)
++                        if (y >= p.top) {
++                            plat = p; y = p.top
++                            x = x.coerceIn(p.l + margin(), max(p.l + margin(), p.r - margin()))
++                            state = IDLE; idle(now, if (crowded()) 500 else 1800)
++                            sound.own(SFX_LAND); fx.emote(index, Fx.SWEAT)
++                        }
++                    }
++                }
+                 HELD -> { x += (dragX - x) * min(1f, dt * 18); y += (dragY + h * .55f - y) * min(1f, dt * 18) }
+                 DROP -> { vy += 2600 * dt; y += vy * dt; if (y >= plat.top) { y = plat.top; state = IDLE; idle(now, if (crowded()) 500 else 2500); sound.own(SFX_LAND); fx.emote(index, Fx.SWEAT) } }
+                 WALK -> {
+@@ -689,7 +789,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 REACT, ACT -> if (!pinned && now > start + min(m.duration(clip) * 1000, if (state == ACT) 9000f else 6000f)) idle(now)
+                 IDLE -> if (now > until && !patOn && patAmt < .05f) next(now)
+             }
+-            val want = if (state == WALK || state == HOP) face else 0f
++            val want = if (state == WALK || state == HOP || state == THROWN) face else 0f
+             var d = want - turn; d = atan2(sin(d), cos(d))
+             turn += d * min(1f, dt * 8)
+             // animation time: loops wrap, a once-clip holds its last pose
+@@ -781,14 +881,18 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 Regex("Idle", RX.I), Regex("Formation_Idle", RX.I), Regex(".*_Idle", RX.I)).coerceAtLeast(0)
+             val walk = find(Regex("(\\d+_)?Cafe_Walk", RX.I), Regex("Walk(ing)?", RX.I), Regex("Move_Ing", RX.I)).let { if (it < 0) idle else it }
+             val react = find(Regex("(\\d+_)?Cafe_Reaction", RX.I), Regex("Victory_Start", RX.I), Regex("Victory_End", RX.I))
++            // thrown about / dizzy: her panic, else her pick-up wriggle, else idle
++            val panic = find(Regex("(\\w+_)?Vital_Panic", RX.I), Regex("(\\d+_)?Fo?rmation[_ ]Pickup", RX.I), Regex("(\\d+_)?Cafe_Idle", RX.I))
+             // (the old ".*die.*" took Exs_Soldier_center: "Soldier")
+             val tap = find(Regex("(\\w+_)?Vital_Death\\d*", RX.I), Regex("Vital_Panic", RX.I), Regex("Vital_Retreat", RX.I))
+                 .let { if (it < 0) react else it }
+             val pick = find(Regex("(\\d+_)?Fo?rmation[_ ]Pickup", RX.I), Regex("Vital_Panic", RX.I))
+             val hop = find(Regex("Move_Jump\\d*", RX.I), Regex("Jump", RX.I))
+-            // her own instruments are in the model (synthesizer, bass, guitar); the café's furniture isn't, so the
+-            // dessert table and the desk (eating / writing into the air) are out
+-            val acts = names.indices.filter { Regex("NonWeapon_(Keyboard|Bass|Guitar|Stretching)", RX.I).matches(names[it]) }
++            // Something of her own (the user: «хочу чтобы все чем-то особым занимались»). The café's instruments
++            // are in 3 models only (the band: synthesizer, bass, guitar; the dessert table and the desk need furniture
++            // no model has), so also what nearly every student has of her own, of 289 models: her gesture (Public,
++            // 181), her victory pose (179), her callsign (180), her EX skill (217).
++            val acts = names.indices.filter { ACT_CLIPS.matches(names[it]) }
+             fun duration(i: Int) = if (i < 0) 1f else animator.getAnimationDuration(i)
+             fun index(name: String) = names.indexOfFirst { it.equals(name, ignoreCase = true) }
+             /** Debug: world scale and position (dp) of a few prop bones, whether the rest pose holds them. */
+@@ -1126,7 +1230,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+ 
+     private object RX { val I = RegexOption.IGNORE_CASE }
+ 
+-    private object Fx { const val HEART = 0; const val NOTE = 1; const val WOW = 2; const val SWEAT = 3 }
++    private object Fx { const val HEART = 0; const val NOTE = 1; const val WOW = 2; const val SWEAT = 3; const val BLUSH = 4 }
+ 
+     /** Forwards to the overlay with the chibi's head position. */
+     private fun BlueOSChibiFx.emote(i: Int, kind: Int) {
+@@ -1135,6 +1239,14 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         sound.emote(kind)
+     }
+ 
++    /** Her words over her head while the line plays. */
++    private fun speak(model: String, text: String) {
++        val c = chibis.firstOrNull { it.m.name == model } ?: return
++        val at = { (c.m.headScreenX() ?: c.x) to (c.headY() - c.h * .32f) }
++        if (follow) fx.speak(text, at) else { val p = at(); fx.speak(text) { p } }    // «Облачко следует за ней»
++        wake()
++    }
++
+     // ------------------------------------------------------------------ sounds
+ 
+     // (declared at the top: the constructor's first reload() may call release() → sound.stop())
+@@ -1178,7 +1290,7 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         }
+ 
+         fun emote(kind: Int) {
+-            val n = when (kind) { Fx.HEART -> "Heart"; Fx.NOTE -> "Music"; Fx.WOW -> "Surprise"; else -> "Sweat" }
++            val n = when (kind) { Fx.HEART, Fx.BLUSH -> "Heart"; Fx.NOTE -> "Music"; Fx.WOW -> "Surprise"; else -> "Sweat" }
+             val file = "SFX_Emoticon_Motion_$n.wav"
+             sfx(File(BlueOSMedia.dir("arona/sfx", file), file), .5f)
+         }
+@@ -1199,10 +1311,12 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+                 val lines = files.filter { it.name.startsWith(p + "_", true) || it.name.equals("$p.ogg", true) }
+                     .groupBy { PART.replace(it.name, "$1.ogg") }                // Lobby_3_1 + Lobby_3_2 → one line
+                 if (lines.isEmpty()) continue
+-                val parts = lines.values.random().sortedBy { it.name.lowercase() }
++                val (key, chosen) = lines.entries.random()
++                val parts = chosen.sortedBy { it.name.lowercase() }
+                 stop()
+                 busyUntil = now + 20_000
+                 playParts(parts, 0)
++                words(model, key.removeSuffix(".ogg"))?.let { onWords?.invoke(model, it) }
+                 return true
+             }
+             return false
+@@ -1223,18 +1337,43 @@ class BlueOSChibiLayer(private val launcher: Launcher, private val dragLayer: Dr
+         }
+ 
+         fun stop() { voice?.release(); voice = null; busyUntil = 0 }
++
++        /** Shows the words of a line that starts playing (model name, text). */
++        var onWords: ((String, String) -> Unit)? = null
++        private val texts = HashMap<String, JSONObject?>()
++        /**
++         * The words of [line] (e.g. "Lobby_3") from the model's voice folder: lines.json, written by
++         * scripts-claude/chibi-voices.py from the wiki ({"Lobby_3": {"ja": …, "en": …, "ru": …}}) and copied by
++         * «Файлы персонажа». Russian when the phone is in Russian and there is one, else English, else Japanese.
++         */
++        private fun words(model: String, line: String): String? {
++            val all = texts.getOrPut(model) {
++                try { JSONObject(File("${BlueOSMedia.ADDED}/${BlueOSMedia.CHIBI}/voice/${model.lowercase()}/lines.json").readText()) }
++                catch (e: Exception) { null }
++            } ?: return null
++            val t = all.optJSONObject(line) ?: return null
++            if (lang == "none") return null
++            return listOf(t.optString(lang), t.optString("en"), t.optString("ja"))
++                .map { it.trim() }.firstOrNull { it.isNotEmpty() }
++        }
+     }
+ 
+     companion object {
+         private const val TAG = "BlueOSChibi"
+         private const val IDLE = 0; private const val WALK = 1; private const val HOP = 2; private const val SIT = 3
+         private const val REACT = 4; private const val ACT = 5; private const val TAP = 6; private const val HELD = 7; private const val DROP = 8
+-        private val BUSY = setOf(WALK, HOP, HELD, DROP)
+-        private val FLYING = setOf(HOP, HELD, DROP)
++        private const val THROWN = 9                         // shaken off her feet, flying around the screen
++        private val BUSY = setOf(WALK, HOP, HELD, DROP, THROWN)
++        private val FLYING = setOf(HOP, HELD, DROP, THROWN)
++        private const val TOSS_G = .85f                      // the phone's own acceleration (g) that throws them
++        private const val TOSS_V = 900f                      // dp/s per g when thrown
++        private const val TOSS_A = 1800f                     // dp/s² per g while flying
+         private const val HOLD_MS = 200L                     // a press this long picks her up
+         private const val TILT = .30f                         // seen a little from above, like the café
+         private const val HALF_PI = (Math.PI / 2).toFloat()
+         private const val CHIBI_SFX = "chibi/sfx"
++        private val ACT_CLIPS = Regex("NonWeapon_(Keyboard|Bass|Guitar|Stretching)|(\\d+_)?(Public(01|_01)?|Victory_Start|Normal(01)?_Callsign|Exs)",
++            RegexOption.IGNORE_CASE)
+         private const val REST_CLIP = "BlueOS_Rest"
+         private const val EDGE_DP = 28f                       // the screen's side where a held chibi turns the page
+         private const val EDGE_MS = 450L

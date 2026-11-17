@@ -1,0 +1,150 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 23:24:30 +0700
+Subject: [PATCH 21/23] =?UTF-8?q?BlueOS:=20Launcher3:=20=C2=AB=D0=9F=D1=80?=
+ =?UTF-8?q?=D0=BE=D0=BA=D1=80=D1=83=D1=82=D0=BA=D0=B0=20=D0=BE=D0=B1=D0=BE?=
+ =?UTF-8?q?=D0=B5=D0=B2=C2=BB=20off=20keeps=20the=20wallpaper=20in=20the?=
+ =?UTF-8?q?=20middle;=20jelly=20touches=20from=20the=20whole=20home=20scre?=
+ =?UTF-8?q?en?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+blueos_wall_scroll = 0 (default): the wallpaper offset stays 0.5 on every page. The jelly
+gets fingers from the DragLayer (on widgets and icons too), only on the home screen itself.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ic9a3182c7c7e2c92339cde7c0d284b6c885d7f59
+---
+ .../launcher3/blueos/BlueOSJellyTouch.kt      | 17 ++++++-----
+ .../launcher3/dragndrop/DragLayer.java        |  4 +++
+ .../touch/WorkspaceTouchListener.java         |  2 --
+ .../util/WallpaperOffsetInterpolator.java     | 29 +++++++++++++++++++
+ 4 files changed, 43 insertions(+), 9 deletions(-)
+
+diff --git a/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt b/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+index ffbd6974ec..9c24f4a6d7 100644
+--- a/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
++++ b/src/com/android/launcher3/blueos/BlueOSJellyTouch.kt
+@@ -22,21 +22,24 @@ import android.view.View
+ import org.blueos.arona.BlueOSJelly
+ 
+ /**
+- * BlueOS 0.9 «Желе на обоях»: a finger on the home screen's empty space goes to the wallpaper as commands (the
+- * wallpaper lives in SystemUI): down, moves (at most one per frame) and up — the area under it follows the finger.
+- * Only while the jelly is on for the home screen and some picture has areas.
++ * BlueOS 0.9 «Желе на обоях»: a finger on the home screen goes to the wallpaper as commands (the wallpaper lives in
++ * SystemUI): down, moves (at most one per frame) and up — the area under it follows the finger. Fed by the
++ * launcher's DragLayer, so touches on widgets and icons count too (the areas are mostly under them). Only on the
++ * home screen itself ([allowed] on the down: not in «Все приложения» / overview), while the jelly is on for the home
++ * screen, some picture has areas and the wallpaper doesn't scroll («Прокрутка обоев» off).
+  */
+ object BlueOSJellyTouch {
+     private var active = false
+     private var lastMove = 0L
+ 
+     @JvmStatic
+-    fun forward(view: View, ev: MotionEvent) {
++    fun forward(view: View, ev: MotionEvent, allowed: Boolean) {
+         val a = ev.actionMasked
+         if (a == MotionEvent.ACTION_DOWN) {
+-            active = try {
+-                val c = BlueOSJelly.read(view.context.contentResolver)
+-                c.on && c.home && c.pics.values.any { it.isNotEmpty() }
++            active = allowed && try {
++                val cr = view.context.contentResolver
++                val c = BlueOSJelly.read(cr)
++                c.on && c.home && c.pics.values.any { it.isNotEmpty() } && BlueOSJelly.allowed(cr)
+             } catch (e: RuntimeException) { false }
+         }
+         if (!active) return
+diff --git a/src/com/android/launcher3/dragndrop/DragLayer.java b/src/com/android/launcher3/dragndrop/DragLayer.java
+index 1e688c3d2e..7794f904d8 100644
+--- a/src/com/android/launcher3/dragndrop/DragLayer.java
++++ b/src/com/android/launcher3/dragndrop/DragLayer.java
+@@ -252,6 +252,10 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
+     public boolean dispatchTouchEvent(MotionEvent ev) {
+         ev.offsetLocation(getTranslationX(), 0);
+         try {
++            // BlueOS 0.9 «Желе на обоях»: any finger on the home screen (on widgets and icons too: the areas are
++            // mostly under them) pulls the wallpaper's area under it — observed, never consumed
++            com.android.launcher3.blueos.BlueOSJellyTouch.forward(this, ev,
++                    mContainer.isInState(com.android.launcher3.LauncherState.NORMAL));
+             // BlueOS 0.9: a chibi takes a gesture once it is hers (a pat, a hold, a tap on her); until then the
+             // launcher sees it as usual, and when she takes it the views that saw its start get a cancel
+             if (mBlueOSChibi != null && mBlueOSChibi.dispatch(ev)) return true;
+diff --git a/src/com/android/launcher3/touch/WorkspaceTouchListener.java b/src/com/android/launcher3/touch/WorkspaceTouchListener.java
+index 248338722a..b2a5e3d1bb 100644
+--- a/src/com/android/launcher3/touch/WorkspaceTouchListener.java
++++ b/src/com/android/launcher3/touch/WorkspaceTouchListener.java
+@@ -94,8 +94,6 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
+ 
+     @Override
+     public boolean onTouch(View view, MotionEvent ev) {
+-        // BlueOS 0.9 «Желе на обоях»: the wallpaper's areas follow a finger on empty space
+-        com.android.launcher3.blueos.BlueOSJellyTouch.forward(mWorkspace, ev);
+         // TODO(http://b/465503610): Unify touch delegation logic into CustomEventsTouchHandler
+         if (mBoxSelectionHelper != null) {
+             mBoxSelectionHelper.onTouchEvent(ev);
+diff --git a/src/com/android/launcher3/util/WallpaperOffsetInterpolator.java b/src/com/android/launcher3/util/WallpaperOffsetInterpolator.java
+index 22e434f6ba..e6aa88b16f 100644
+--- a/src/com/android/launcher3/util/WallpaperOffsetInterpolator.java
++++ b/src/com/android/launcher3/util/WallpaperOffsetInterpolator.java
+@@ -46,6 +46,16 @@ public class WallpaperOffsetInterpolator {
+     private boolean mLockedToDefaultPage;
+     private int mNumScreens;
+ 
++    // BlueOS 0.9 «Прокрутка обоев» off (Settings.Secure blueos_wall_scroll = 0): the wallpaper stays in the middle
++    // whatever page shows — «Желе на обоях» needs its areas where they are on the screen
++    private volatile boolean mBlueOSStill;
++    private kotlin.jvm.functions.Function0<kotlin.Unit> mBlueOSUnobserve;
++
++    private void blueOSReadScroll() {
++        mBlueOSStill = !org.blueos.arona.BlueOSSettings.isOn(mContext.getContentResolver(),
++                org.blueos.arona.BlueOSSettings.WALL_SCROLL);
++    }
++
+     public WallpaperOffsetInterpolator(Workspace<?> workspace) {
+         mContext = workspace.getContext();
+         mWorkspace = workspace;
+@@ -53,6 +63,7 @@ public class WallpaperOffsetInterpolator {
+                 workspace.getContext(), UI_HELPER_EXECUTOR, i -> onWallpaperChanged());
+         mIsRtl = Utilities.isRtl(workspace.getResources());
+         mHandler = new OffsetHandler(workspace.getContext());
++        blueOSReadScroll();
+     }
+ 
+     /**
+@@ -74,6 +85,13 @@ public class WallpaperOffsetInterpolator {
+     private void wallpaperOffsetForScroll(int scroll, int numScrollableScreens, final int[] out) {
+         out[1] = 1;
+ 
++        // BlueOS 0.9: the wallpaper doesn't scroll — the middle of what the picture has for the screen
++        if (mBlueOSStill) {
++            out[0] = 1;
++            out[1] = 2;
++            return;
++        }
++
+         // To match the default wallpaper behavior in the system, we default to either the left
+         // or right edge on initialization
+         if (mLockedToDefaultPage || numScrollableScreens <= 1) {
+@@ -205,7 +223,18 @@ public class WallpaperOffsetInterpolator {
+         if (mWindowToken == null && mRegistered) {
+             mWallpaperChangeReceiver.close();
+             mRegistered = false;
++            if (mBlueOSUnobserve != null) {
++                mBlueOSUnobserve.invoke();
++                mBlueOSUnobserve = null;
++            }
+         } else if (mWindowToken != null && !mRegistered) {
++            blueOSReadScroll();
++            mBlueOSUnobserve = org.blueos.arona.BlueOSSettings.INSTANCE.observe(mContext,
++                    java.util.List.of(org.blueos.arona.BlueOSSettings.WALL_SCROLL), () -> {
++                        blueOSReadScroll();
++                        syncWithScroll();
++                        return kotlin.Unit.INSTANCE;
++                    });
+             mWallpaperChangeReceiver.register(
+                     actionsFilter(ACTION_WALLPAPER_CHANGED),
+                     0 /* flags */,

@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Wed, 11 Nov 2026 09:22:09 +0700
+Subject: [PATCH 35/42] BlueOS: SystemUI: Moe clock follows the 12/24 h setting
+
+BitmapClockViewController ignored onTimeFormatChanged / onTimeZoneChanged / onLocaleChanged, so its layers kept
+the "hh" formatter they are built with: 12 h on a 24 h phone. It now does what FlexClockTextViewController does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I930555c9c4d3757ad1fd8011133d68194fddefd7
+---
+ .../controller/BitmapClockViewController.kt     | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/controller/BitmapClockViewController.kt b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/controller/BitmapClockViewController.kt
+index f764aead2cc6..44e3970f6a1d 100644
+--- a/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/controller/BitmapClockViewController.kt
++++ b/packages/SystemUI/customization/src/com/android/systemui/shared/clocks/controller/BitmapClockViewController.kt
+@@ -52,11 +52,22 @@ class BitmapClockViewController(
+ 
+     override val events =
+         object : ClockEvents {
+-            override fun onTimeZoneChanged(timeZone: TimeZone) {}
++            // BlueOS Moe: the layers are built with Android's "hh" formatter; like FlexClockTextViewController, follow
++            // the phone's 12/24 h setting, time zone and locale (the user, 2026-11-11: Moe showed 12 h on a 24 h phone)
++            override fun onTimeZoneChanged(timeZone: TimeZone) {
++                timespec.formatter.timeKeeper.timeZone = timeZone
++                refreshTime()
++            }
+ 
+-            override fun onTimeFormatChanged(formatKind: TimeFormatKind) {}
++            override fun onTimeFormatChanged(formatKind: TimeFormatKind) {
++                timespec.formatter.formatKind = formatKind
++                refreshTime()
++            }
+ 
+-            override fun onLocaleChanged(locale: Locale) {}
++            override fun onLocaleChanged(locale: Locale) {
++                timespec.formatter.locale = locale
++                refreshTime()
++            }
+ 
+             override fun onWeatherDataChanged(data: WeatherData) {}
+ 

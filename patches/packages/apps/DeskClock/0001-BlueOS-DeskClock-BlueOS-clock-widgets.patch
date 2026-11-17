@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: GDmio <zhalin66@gmail.com>
 Date: Sun, 25 Oct 2026 00:06:19 +0200
-Subject: [PATCH 1/4] BlueOS: DeskClock: BlueOS clock widgets
+Subject: [PATCH 1/5] BlueOS: DeskClock: BlueOS clock widgets
 
 Three widgets next to the stock ones, in the system palette colors (accent,
 dark theme) and the BlueOS clock font:

@@ -1,0 +1,118 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: GDmio <zhalin66@gmail.com>
+Date: Thu, 12 Nov 2026 12:33:58 +0700
+Subject: [PATCH 37/42] =?UTF-8?q?BlueOS:=20SystemUI:=20=C2=AB=D0=AD=D0=BA?=
+ =?UTF-8?q?=D1=80=D0=B0=D0=BD=20=D0=B2=20=D0=BB=D0=BE=D0=B1=D0=B1=D0=B8?=
+ =?UTF-8?q?=C2=BB=20=E2=80=94=20the=20screen=20stays=20on=20in=20the=20lob?=
+ =?UTF-8?q?by=20(always=20or=20while=20charging)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ie7081a7817fec5eb142fa98a44f1d10c97120f1a
+---
+ .../systemui/blueos/lobby/BlueOSLobbyHost.kt  | 36 +++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+index 1a9572443636..1cfdc22a4c8a 100644
+--- a/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
++++ b/packages/SystemUI/src/com/android/systemui/blueos/lobby/BlueOSLobbyHost.kt
+@@ -3,11 +3,15 @@ package com.android.systemui.blueos.lobby
+ import android.animation.Animator
+ import android.animation.AnimatorListenerAdapter
+ import android.animation.ValueAnimator
++import android.content.BroadcastReceiver
+ import android.content.Context
++import android.content.Intent
++import android.content.IntentFilter
+ import android.database.ContentObserver
+ import android.graphics.Color
+ import android.graphics.Typeface
+ import android.graphics.drawable.GradientDrawable
++import android.os.BatteryManager
+ import android.os.Handler
+ import android.os.Looper
+ import android.provider.Settings
+@@ -143,6 +147,9 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+     private var clockMode = 2
+     private var fpIcon = true
+     private var autohide = false
++    /** the screen while the lobby is open: 0 goes off as usual, 1 stays on while charging, 2 always ([K.LOBBY_AWAKE]) */
++    private var awakeMode = 0
++    private var charging = false
+     private var loadedName: String? = null
+     private var loaded = false
+ 
+@@ -188,6 +195,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+ 
+     fun release() {
+         context.contentResolver.unregisterContentObserver(observer)
++        try { context.unregisterReceiver(power) } catch (_: IllegalArgumentException) {}
+         window.viewTreeObserver.removeOnPreDrawListener(preDraw)
+         closeNow()
+         unload()
+@@ -199,6 +207,8 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         clockMode = K.int(cr, K.LOBBY_CLOCK).coerceIn(0, 2)
+         fpIcon = K.int(cr, K.LOBBY_FP) != 0
+         autohide = K.int(cr, K.LOBBY_AUTOHIDE) != 0
++        awakeMode = K.int(cr, K.LOBBY_AWAKE).coerceIn(0, 2)
++        updateKeepOn()
+         clockBox.visibility = if (clockMode == 0) GONE else VISIBLE
+         date.visibility = if (clockMode == 2) VISIBLE else GONE
+         shade.visibility = clockBox.visibility
+@@ -398,6 +408,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+             return
+         }
+         if (visibility != VISIBLE) visibility = VISIBLE
++        updateKeepOn()
+         val me = (progress - 1f) * w
+         if (translationX != me) translationX = me
+         val shift = progress * w
+@@ -421,6 +432,7 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+     private fun restoreLockScreen() {
+         visibility = INVISIBLE
+         lobby.active = false
++        updateKeepOn()
+         translationX = 0f
+         if (!moved) return
+         moved = false
+@@ -429,6 +441,25 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         keyguardRoot.findViewById<View>(R.id.device_entry_icon_view)?.translationX = 0f
+     }
+ 
++    // ---------------------------------------------------------------- «Экран в лобби»: the screen stays on
++
++    private val power = object : BroadcastReceiver() {
++        override fun onReceive(c: Context, i: Intent) {
++            charging = when (i.action) {
++                Intent.ACTION_POWER_CONNECTED -> true
++                Intent.ACTION_POWER_DISCONNECTED -> false
++                else -> i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
++            }
++            updateKeepOn()
++        }
++    }
++
++    /** While the lobby is open (and the setting says so) the shade window keeps the screen on (FLAG_KEEP_SCREEN_ON). */
++    private fun updateKeepOn() {
++        val want = progress > 0f && when (awakeMode) { 2 -> true; 1 -> charging; else -> false }
++        if (keepScreenOn != want) keepScreenOn = want
++    }
++
+     // ---------------------------------------------------------------- «Прятать, пока не трогаю»
+ 
+     private var hidden = false
+@@ -454,6 +485,11 @@ internal class LobbyHost(context: Context, private val window: ViewGroup, privat
+         readSettings()
+         K.LOBBY_KEYS.forEach { context.contentResolver.registerContentObserver(Settings.Secure.getUriFor(it), false, observer) }
+         window.viewTreeObserver.addOnPreDrawListener(preDraw)
++        context.registerReceiver(power, IntentFilter().apply {
++            addAction(Intent.ACTION_POWER_CONNECTED); addAction(Intent.ACTION_POWER_DISCONNECTED)
++        }, Context.RECEIVER_NOT_EXPORTED)
++        charging = (context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
++            ?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
+     }
+ 
+     companion object {
