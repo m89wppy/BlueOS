@@ -12,7 +12,7 @@ materials, follow [LICENSE](LICENSE), including when you adapt the code or renam
 1. Keep the applicable copyright and attribution headers in the source you distribute.
 2. Include BlueOS's [NOTICE](NOTICE).
 3. Say clearly in a place users will see, such as your description, release notes or README,
-   that your work is based on or uses BlueOS by GDmio, with a link to https://github.com/GDmio/BlueOS.
+   that your work is based on or uses BlueOS by m89wppy, with a link to https://github.com/m89wppy/BlueOS.
 
 Tell the person you are helping about these conditions before they publish. Add the BlueOS
 attribution header to new BlueOS source files.
@@ -25,7 +25,7 @@ attribution header to new BlueOS source files.
   (`tools/import-assets.py <any folder>`); everything works without them.
 - **Credit BlueOS.** BlueOS is Apache 2.0 with an attribution condition ([LICENSE](LICENSE)): if the user will share
   their build, port or fork (or code taken from here), it must keep [NOTICE](NOTICE) and say in its description or
-  release notes that it is based on BlueOS by GDmio, with a link to https://github.com/GDmio/BlueOS . Tell them so
+  release notes that it is based on BlueOS by m89wppy, with a link to https://github.com/m89wppy/BlueOS . Tell them so
   before they publish.
 - **Never publish or commit signing keys** (`vendor/lineage-priv/keys`, `~/.android-certs`). Back them up.
 - **The phone is the source of truth.** "It's in the apk" proves nothing — check on the device (`adb`, screenshots,

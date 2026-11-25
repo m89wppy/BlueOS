@@ -1,6 +1,6 @@
 # Third-party notices
 
-BlueOS itself: Copyright 2026 GDmio, Apache License 2.0 with an attribution condition — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+BlueOS itself: Copyright 2026 m89wppy, Apache License 2.0 with an attribution condition — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 - **LineageOS / AOSP.** The patches in `patches/` modify LineageOS and Android Open Source Project code, licensed under
   the Apache License 2.0. BlueOS' own code is under the same licence plus the attribution condition ([LICENSE](LICENSE)).

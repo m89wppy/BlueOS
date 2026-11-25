@@ -1,6 +1,6 @@
 BlueOS
-Copyright 2026 GDmio
-https://github.com/GDmio/BlueOS
+Copyright 2026 m89wppy
+https://github.com/m89wppy/BlueOS
 
 BlueOS' own work in this repository (its patches, code, scripts, configuration, logo, boot
 animations, sounds and other original media) is licensed under the Apache License, Version 2.0
@@ -10,7 +10,7 @@ below, with one additional condition, as Section 4 of that License allows for mo
   port, a fork, or code, patches or media taken from it), in Source or Object form, you must
   (1) keep the NOTICE file of this repository with it, and (2) state clearly, where the users of
   your work will see it (its description, release notes or README), that it is based on or uses
-  BlueOS by GDmio, with a link to https://github.com/GDmio/BlueOS .
+  BlueOS by m89wppy, with a link to https://github.com/m89wppy/BlueOS .
 
 Distribution that does not meet the conditions of this licence is not licensed, and the author
 may ask for it to be taken down. Installing and using BlueOS on your own phone needs nothing.

@@ -1,9 +1,9 @@
 # Установка готовой BlueOS на Google Pixel 6
 
-[English](https://github.com/GDmio/BlueOS/blob/main/INSTALL-Pixel6-0.9.md) | **Русский**
+[English](https://github.com/m89wppy/BlueOS/blob/main/INSTALL-Pixel6-0.9.md) | **Русский**
 
 Эта инструкция и этот zip — только для **Pixel 6** (кодовое имя `oriole`), сборка BlueOS 0.9.0 из этого комплекта. Для каждой модели скачивайте её собственную сборку. Для Pixel 6 Pro —
-[INSTALL-Pixel6Pro.ru.md](https://github.com/GDmio/BlueOS/blob/main/INSTALL-Pixel6Pro.ru.md), для Pixel 6a — [INSTALL.ru.md](https://github.com/GDmio/BlueOS/blob/main/INSTALL.ru.md).
+[INSTALL-Pixel6Pro.ru.md](https://github.com/m89wppy/BlueOS/blob/main/INSTALL-Pixel6Pro.ru.md), для Pixel 6a — [INSTALL.ru.md](https://github.com/m89wppy/BlueOS/blob/main/INSTALL.ru.md).
 
 Сборка 0.9.0 прошла проверки на компьютере. Загрузку и работу на Pixel 6 ещё предстоит проверить.
 
@@ -17,7 +17,7 @@
   должно быть. **Не блокируйте загрузчик, пока стоит BlueOS**: телефон перестанет загружаться.
 - **Некоторые приложения могут не работать:** оплата телефоном (Google Wallet), часть банковских приложений и игр.
 - **Персонажа и звуков из Blue Archive в этой сборке нет.** Файлы игры можно добавить
-  прямо на телефоне: «Обои и стиль» → «Персонаж» → «Добавить файлы персонажа» ([ASSETS.ru.md](https://github.com/GDmio/BlueOS/blob/main/ASSETS.ru.md)). Где их взять: в постах Telegram-канала BlueOS —
+  прямо на телефоне: «Обои и стиль» → «Персонаж» → «Добавить файлы персонажа» ([ASSETS.ru.md](https://github.com/m89wppy/BlueOS/blob/main/ASSETS.ru.md)). Где их взять: в постах Telegram-канала BlueOS —
   [t.me/BlueOSfirmware](https://t.me/BlueOSfirmware), или собрать самому из файлов игры.
 - **Google Play внутри** (MindTheGapps).
 - Телефон, купленный у оператора с блокировкой, загрузчик не разблокирует — тогда установить нельзя.

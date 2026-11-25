@@ -3,7 +3,7 @@
 **English** | [Русский](GSI.ru.md)
 
 A GSI is one system image that can run on many Android phones: it replaces only the system itself, and everything
-that belongs to the hardware stays from the phone's own firmware. The experimental image is available in the [BlueOS 0.9.0 GSI release](https://github.com/GDmio/BlueOS/releases/tag/v0.9.0-gsi-treble).
+that belongs to the hardware stays from the phone's own firmware. The experimental image is available in the [BlueOS 0.9.0 GSI release](https://github.com/m89wppy/BlueOS/releases/tag/v0.9.0-gsi-treble).
 
 The image is built on **TrebleDroid**: a set of fixes for GSIs that help the system boot and work on phones of
 different brands. The previous image (`v0.8.1-gsi`) didn't have them, and for testers it hung on boot and the camera

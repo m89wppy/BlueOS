@@ -28,7 +28,7 @@ repo sync -j8
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
-  <remote name="blueos" fetch="https://github.com/GDmio" />
+  <remote name="blueos" fetch="https://github.com/m89wppy" />
   <project path="vendor/blueos" name="BlueOS" remote="blueos" revision="main" />
 </manifest>
 ```

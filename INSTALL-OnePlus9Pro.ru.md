@@ -1,6 +1,6 @@
 # Тестовая BlueOS для OnePlus 9 Pro
 
-[English](https://github.com/GDmio/BlueOS/blob/main/INSTALL-OnePlus9Pro.md) | **Русский**
+[English](https://github.com/m89wppy/BlueOS/blob/main/INSTALL-OnePlus9Pro.md) | **Русский**
 
 Это инструкция по чистой установке BlueOS на OnePlus 9 Pro (`lemonadep`). Загрузку этой сборки на телефоне ещё предстоит проверить.
 
@@ -38,4 +38,4 @@
 4. В главном меню Recovery выберите **Apply update → Apply from ADB** и выполните на ПК `adb -d sideload BlueOS-0.9.0-lemonadep-20261118.zip`. Проверяйте результат на экране телефона. Индикатор ADB на ПК иногда останавливается на 47% даже при успешной установке. Когда Recovery подтвердит успех, выберите **Reboot system now**.
 5. После первой загрузки проверьте звонки, мобильный интернет, Wi-Fi, Bluetooth, камеры, звук и отпечаток пальца. Google Play уже входит в сборку.
 
-Контрольные суммы ZIP и образов перечислены в `SHA256SUMS`. Комплект основан на [BlueOS by GDmio](https://github.com/GDmio/BlueOS).
+Контрольные суммы ZIP и образов перечислены в `SHA256SUMS`. Комплект основан на [BlueOS by m89wppy](https://github.com/m89wppy/BlueOS).

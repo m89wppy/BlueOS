@@ -1,6 +1,6 @@
 # BlueOS 0.9.0 для Xiaomi Mi 9 Transparent Edition
 
-[English](https://github.com/GDmio/BlueOS/blob/main/INSTALL-Mi9.md) | **Русский**
+[English](https://github.com/m89wppy/BlueOS/blob/main/INSTALL-Mi9.md) | **Русский**
 
 Это тестовая сборка на Android 17 для Xiaomi Mi 9 с кодовым именем `cepheus`. Google Play уже включён. ZIP и образы проверены на компьютере. Первую загрузку и работу оборудования нужно проверить на телефоне.
 
@@ -27,4 +27,4 @@ ZIP создаёт разметку динамических разделов и
 
 Для первого теста проверьте звонки и мобильные данные, Wi-Fi, Bluetooth, все камеры, экранный отпечаток, NFC, звук и беспроводную зарядку. Если установка прервалась, сохраните текст ошибки из Recovery.
 
-BlueOS by GDmio. [Репозиторий проекта](https://github.com/GDmio/BlueOS)
+BlueOS by m89wppy. [Репозиторий проекта](https://github.com/m89wppy/BlueOS)

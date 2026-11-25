@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Сначала проверьте [BUILDING.md](https://github.com/GDmio/BlueOS/blob/main/BUILDING.md) и «Частые проблемы» в [PORTING.md](https://github.com/GDmio/BlueOS/blob/main/PORTING.md).
+        Сначала проверьте [BUILDING.md](https://github.com/m89wppy/BlueOS/blob/main/BUILDING.md) и «Частые проблемы» в [PORTING.md](https://github.com/m89wppy/BlueOS/blob/main/PORTING.md).
         **Чистая LineageOS 24.0 для вашего телефона должна собираться и загружаться** — если нет, это вопрос к дереву
         устройства, не к BlueOS. Получилось на новом телефоне — тоже пишите, это поможет другим.
         Check BUILDING.md and PORTING.md first; plain LineageOS 24.0 must build and boot on your device.

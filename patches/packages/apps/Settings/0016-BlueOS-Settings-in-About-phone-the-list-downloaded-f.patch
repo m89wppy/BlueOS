@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Fri, 13 Nov 2026 06:57:43 +0700
 Subject: [PATCH 16/18] =?UTF-8?q?BlueOS:=20Settings:=20=C2=AB=D0=91=D0=BB?=
  =?UTF-8?q?=D0=B0=D0=B3=D0=BE=D0=B4=D0=B0=D1=80=D0=BD=D0=BE=D1=81=D1=82?=
@@ -338,6 +338,6 @@ index 00000000000..f10777b9b57
 +    companion object {
 +        private const val TAG = "BlueOSThanks"
 +        /** the public repository's list (vendor/blueos/thanks.json, branch main) */
-+        const val URL_THANKS = "https://raw.githubusercontent.com/GDmio/BlueOS/main/thanks.json"
++        const val URL_THANKS = "https://raw.githubusercontent.com/m89wppy/BlueOS/main/thanks.json"
 +    }
 +}

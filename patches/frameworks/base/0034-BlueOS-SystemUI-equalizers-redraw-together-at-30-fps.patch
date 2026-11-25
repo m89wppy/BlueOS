@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Wed, 11 Nov 2026 08:59:03 +0700
 Subject: [PATCH 34/42] BlueOS: SystemUI: equalizers redraw together at 30 fps,
  the narrow equalizer widget loads, no crash on a second tile activation

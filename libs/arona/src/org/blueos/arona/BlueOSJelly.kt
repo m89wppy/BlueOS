@@ -1,10 +1,10 @@
 /*
- * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
+ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
  * SPDX-License-Identifier: Apache-2.0
  *
- * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
+ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
  * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
- * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
+ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
  */
 
 package org.blueos.arona

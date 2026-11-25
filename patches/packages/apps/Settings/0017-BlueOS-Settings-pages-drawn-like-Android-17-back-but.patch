@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Fri, 13 Nov 2026 10:49:48 +0700
 Subject: [PATCH 17/18] BlueOS: Settings pages drawn like Android 17 (back
  button + title row, dark bar icons in the light theme)
@@ -151,7 +151,7 @@ index f10777b9b57..e92ecfeddb7 100755
                  val body = c.inputStream.use { it.readBytes() }
                  val json = JSONObject(String(body))
 @@ -231,3 +223,75 @@ class BlueOSThanksActivity : Activity() {
-         const val URL_THANKS = "https://raw.githubusercontent.com/GDmio/BlueOS/main/thanks.json"
+         const val URL_THANKS = "https://raw.githubusercontent.com/m89wppy/BlueOS/main/thanks.json"
      }
  }
 +

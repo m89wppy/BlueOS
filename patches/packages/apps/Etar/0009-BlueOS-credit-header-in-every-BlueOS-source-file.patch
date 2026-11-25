@@ -1,10 +1,10 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Sat, 14 Nov 2026 09:54:14 +0700
 Subject: [PATCH 9/9] BlueOS: credit header in every BlueOS source file
 
 So that anyone reusing BlueOS code (or their tools) sees where it
-comes from and what the licence asks: keep NOTICE and credit BlueOS by GDmio.
+comes from and what the licence asks: keep NOTICE and credit BlueOS by m89wppy.
 
 Change-Id: I04b2d4aba6e91ac8b23f9bba4ecfd9b750dd3c4b
 ---
@@ -21,7 +21,7 @@ index ea24ba9e..870bdc11 100644
 @@ -1,17 +1,10 @@
  /*
 - * Copyright (C) 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
   *
 - * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +35,9 @@ index ea24ba9e..870bdc11 100644
 - * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 - * See the License for the specific language governing permissions and
 - * limitations under the License.
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package com.android.calendar.widget;
@@ -48,7 +48,7 @@ index 2120964c..4d43e33f 100644
 @@ -1,17 +1,10 @@
  /*
 - * Copyright (C) 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
   *
 - * Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,9 +62,9 @@ index 2120964c..4d43e33f 100644
 - * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 - * See the License for the specific language governing permissions and
 - * limitations under the License.
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package com.android.calendar.widget;
@@ -75,7 +75,7 @@ index ba5c24f8..5d5dcf82 100644
 @@ -1,17 +1,10 @@
  /*
 - * Copyright (C) 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
   *
 - * Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,9 +89,9 @@ index ba5c24f8..5d5dcf82 100644
 - * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 - * See the License for the specific language governing permissions and
 - * limitations under the License.
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package com.android.calendar.widget;
@@ -102,7 +102,7 @@ index 4309b1d8..b9e3289c 100644
 @@ -1,17 +1,10 @@
  /*
 - * Copyright (C) 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
   *
 - * Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,9 +116,9 @@ index 4309b1d8..b9e3289c 100644
 - * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 - * See the License for the specific language governing permissions and
 - * limitations under the License.
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package com.android.calendar.widget;

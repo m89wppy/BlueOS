@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Fri, 13 Nov 2026 13:37:09 +0700
 Subject: [PATCH 41/42] BlueOS: wallpaper frames ~2x cheaper; the weather keeps
  moving while swiping; the jelly redraws only its box

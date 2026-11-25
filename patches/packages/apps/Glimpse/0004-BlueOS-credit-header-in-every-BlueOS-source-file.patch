@@ -1,10 +1,10 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Sat, 14 Nov 2026 09:54:14 +0700
 Subject: [PATCH 4/4] BlueOS: credit header in every BlueOS source file
 
 So that anyone reusing BlueOS code (or their tools) sees where it
-comes from and what the licence asks: keep NOTICE and credit BlueOS by GDmio.
+comes from and what the licence asks: keep NOTICE and credit BlueOS by m89wppy.
 
 Change-Id: I41f0445da939ee780a0868f36507759cb635e54a
 ---
@@ -20,12 +20,12 @@ index df7b52a..24f3ed5 100644
 @@ -1,6 +1,10 @@
  /*
 - * SPDX-FileCopyrightText: 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
   * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package org.lineageos.glimpse.widgets
@@ -36,12 +36,12 @@ index 6973ca6..98f2898 100644
 @@ -1,6 +1,10 @@
  /*
 - * SPDX-FileCopyrightText: 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
   * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package org.lineageos.glimpse.widgets
@@ -52,12 +52,12 @@ index 91d8c97..1940810 100644
 @@ -1,6 +1,10 @@
  /*
 - * SPDX-FileCopyrightText: 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
   * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package org.lineageos.glimpse.widgets

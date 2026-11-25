@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Mon, 16 Nov 2026 14:11:08 +0700
 Subject: [PATCH 24/24] BlueOS: Launcher3: restore blur after visibility
  changes

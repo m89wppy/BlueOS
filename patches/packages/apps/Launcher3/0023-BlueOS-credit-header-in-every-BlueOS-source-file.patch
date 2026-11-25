@@ -1,10 +1,10 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: GDmio <zhalin66@gmail.com>
+From: m89wppy <zhalin66@gmail.com>
 Date: Sat, 14 Nov 2026 09:54:14 +0700
 Subject: [PATCH 23/23] BlueOS: credit header in every BlueOS source file
 
 So that anyone reusing BlueOS code (or their tools) sees where it
-comes from and what the licence asks: keep NOTICE and credit BlueOS by GDmio.
+comes from and what the licence asks: keep NOTICE and credit BlueOS by m89wppy.
 
 Change-Id: I2fe56fecdeec96c7a031a01f21b4450283b973b1
 ---
@@ -24,12 +24,12 @@ index 57b18041e5..e3ef59f72f 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSAronaWidget.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
@@ -41,12 +41,12 @@ index 9cb1cb11a8..cef1ff7a19 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSChibiFx.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
@@ -58,12 +58,12 @@ index c5ef43451a..d404bc924c 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSChibiLayer.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
@@ -75,12 +75,12 @@ index 6c3390c2bb..2d741f98d6 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSGiftWidget.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
@@ -92,12 +92,12 @@ index 8f46820b2d..e15be044c1 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSIcons.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
@@ -110,7 +110,7 @@ index d7734f8c50..8b2e65de42 100644
 @@ -1,17 +1,10 @@
  /*
 - * Copyright (C) 2026 BlueOS
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
   *
 - * Licensed under the Apache License, Version 2.0 (the "License");
@@ -124,9 +124,9 @@ index d7734f8c50..8b2e65de42 100644
 - * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 - * See the License for the specific language governing permissions and
 - * limitations under the License.
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
   */
  
  package com.android.launcher3.blueos
@@ -136,12 +136,12 @@ index 760ed0a3c1..52b922abf9 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSWeatherWidget.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
@@ -153,12 +153,12 @@ index 210a350f72..140ad9f5e8 100644
 +++ b/src/com/android/launcher3/blueos/BlueOSWidgetDecorator.kt
 @@ -1,3 +1,12 @@
 +/*
-+ * SPDX-FileCopyrightText: 2026 GDmio (BlueOS)
++ * SPDX-FileCopyrightText: 2026 m89wppy (BlueOS)
 + * SPDX-License-Identifier: Apache-2.0
 + *
-+ * Part of BlueOS by GDmio: https://github.com/GDmio/BlueOS
++ * Part of BlueOS by m89wppy: https://github.com/m89wppy/BlueOS
 + * Reusing this code (as it is, changed or renamed)? Keep this notice, copy NOTICE and say
-+ * "based on BlueOS by GDmio" with the link in your project's description. See LICENSE.
++ * "based on BlueOS by m89wppy" with the link in your project's description. See LICENSE.
 + */
 +
  package com.android.launcher3.blueos
